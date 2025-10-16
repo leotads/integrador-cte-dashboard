@@ -25,7 +25,8 @@ import {
 })
 export class AppComponent {
   readonly menus: Array<PoMenuItem> = [
-    { label: 'Home', action: this.onClick.bind(this) },
+    { label: 'Dashboard', link: '/', icon: 'an an-chart-line', shortLabel: 'Dashboard' },
+    { label: 'Monitor', link: 'monitor', icon: 'an an-monitor', shortLabel: 'Monitor' },
   ];
 
   constructor(
@@ -38,7 +39,8 @@ export class AppComponent {
     }
   }
 
-  private onClick() {
-    alert('Clicked in menu item');
+  private onClick(menu: string) {
+    console.log(menu)
+    this.router.navigate([`/${menu}`]);
   }
 }
