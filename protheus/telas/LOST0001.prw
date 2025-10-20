@@ -99,17 +99,17 @@ Static Function qtdAllInte(param_name)
 
   Local nQuantidade := 0
 
-  BeginSql alias 'QRY'
+  BeginSql alias 'QRYAllInte'
     SELECT count(*) quantidade
       FROM %table:ZZ1% ZZ1
      WHERE ZZ1.ZZ1_STATUS = 'F' AND 
            ZZ1.%notdel%
   endSql
 
-  if QRY->( !EOF( ) )
-    nQuantidade := QRY->quantidade
+  if QRYAllInte->( !EOF( ) )
+    nQuantidade := QRYAllInte->quantidade
   endif 
-  QRY->( dbCloseArea( ) )
+  QRYAllInte->( dbCloseArea( ) )
 
 Return nQuantidade
 
@@ -129,17 +129,17 @@ Static Function qtdAllErrs()
 
   Local nQuantidade := 0
 
-  BeginSql alias 'QRY'
+  BeginSql alias 'AllErrs'
     SELECT count(*) quantidade
       FROM %table:ZZ1% ZZ1
      WHERE ZZ1.ZZ1_STATUS = 'E' AND 
            ZZ1.%notdel%
   endSql
 
-  if QRY->( !EOF( ) )
-    nQuantidade := QRY->quantidade
+  if AllErrs->( !EOF( ) )
+    nQuantidade := AllErrs->quantidade
   endif 
-  QRY->( dbCloseArea( ) )
+  AllErrs->( dbCloseArea( ) )
 
 Return nQuantidade
 
@@ -178,40 +178,40 @@ Static Function reqPerDay(cContent)
     aAdd(aErros, 0)    
   next i
 
-  
-cQuery := "    SELECT substring(ZZ1_HORA, 1 ,2) hora, "
-cQuery += "           ZZ1_STATUS "
-cQuery += "      FROM " + retSqlName("ZZ1") + " ZZ1  "
-cQuery += "     WHERE ZZ1_DATA = '" + aDate[1] + aDate[2] + aDate[3] + "' AND  "
-cQuery += "           ZZ1.D_E_L_E_T_ = ' ' "
-cQuery += "     ORDER BY substring(ZZ1_HORA, 1 ,2) "
-
-cQuery := ChangeQuery( cQuery )
-
-tcQuery cQuery new alias 'QRY'
-  
-if QRY->( !EOF( ) )
-
-  while QRY->( !EOF( ) )
-
-    nPos := ascan(aHoras, {|x| x == QRY->hora + "h"})
     
-    if nPos > 0
-      Do Case
-      Case QRY->STATUS == 'A'
-        aAbertos[nPos] += 1
-      Case QRY->STATUS == 'F'
-        aConcluidos[nPos] += 1
-      Case QRY->STATUS == 'E'
-        aErros[nPos] += 1
-      EndCase
-    endif
+  cQuery := "    SELECT substring(ZZ1_HORA, 1 ,2) hora, "
+  cQuery += "           ZZ1_STATUS "
+  cQuery += "      FROM " + retSqlName("ZZ1") + " ZZ1  "
+  cQuery += "     WHERE ZZ1_DATA = '" + aDate[1] + aDate[2] + aDate[3] + "' AND  "
+  cQuery += "           ZZ1.D_E_L_E_T_ = ' ' "
+  cQuery += "     ORDER BY substring(ZZ1_HORA, 1 ,2) "
 
-    QRY->( dbSkip( ) )
-  endDo
+  cQuery := ChangeQuery( cQuery )
+
+  tcQuery cQuery new alias 'QRYPerDay'
+    
+  if QRYPerDay->( !EOF( ) )
+
+    while QRYPerDay->( !EOF( ) )
+
+      nPos := ascan(aHoras, {|x| x == QRYPerDay->hora + "h"})
+      
+      if nPos > 0
+        Do Case
+        Case QRYPerDay->ZZ1_STATUS == 'A'
+          aAbertos[nPos] += 1
+        Case QRYPerDay->ZZ1_STATUS == 'F'
+          aConcluidos[nPos] += 1
+        Case QRYPerDay->ZZ1_STATUS == 'E'
+          aErros[nPos] += 1
+        EndCase
+      endif
+
+      QRYPerDay->( dbSkip( ) )
+    endDo
 
   endif
-  QRY->( dbCloseArea( ) )
+  QRYPerDay->( dbCloseArea( ) )
 
   jAbertos := JsonObject():new()
     jAbertos["label"] := "Abertos"
@@ -295,28 +295,28 @@ Static Function rqPerMonth(cContent)
   cQuery += " ORDER BY substring(ZZ1_DATA, 5, 2) "
 
   cQuery := ChangeQuery( cQuery )
-  tcQuery cQuery new alias 'QRY'
+  tcQuery cQuery new alias 'QRYPerMonth'
 
   conout(cQuery)
 
-  if QRY->( !EOF( ) )
+  if QRYPerMonth->( !EOF( ) )
 
-    while QRY->( !EOF( ) )
+    while QRYPerMonth->( !EOF( ) )
 
-      nPos := ascan(aDias, {|x| x == QRY->dia})
+      nPos := ascan(aDias, {|x| x == QRYPerMonth->dia})
 
-      if QRY->ZZ1_STATUS == 'A'
-        aAbertos[nPos] := QRY->quantidade
-      elseif QRY->ZZ1_STATUS == 'F'
-        aConcluidos[nPos] := QRY->quantidade
-      elseif QRY->ZZ1_STATUS == 'E'
-        aErros[nPos] := QRY->quantidade
+      if QRYPerMonth->ZZ1_STATUS == 'A'
+        aAbertos[nPos] := QRYPerMonth->quantidade
+      elseif QRYPerMonth->ZZ1_STATUS == 'F'
+        aConcluidos[nPos] := QRYPerMonth->quantidade
+      elseif QRYPerMonth->ZZ1_STATUS == 'E'
+        aErros[nPos] := QRYPerMonth->quantidade
       endif
-      QRY->( dbSkip( ) )
+      QRYPerMonth->( dbSkip( ) )
     endDo
 
   endif
-  QRY->( dbCloseArea( ) )
+  QRYPerMonth->( dbCloseArea( ) )
 
   jAbertos := JsonObject():new()
     jAbertos["label"] := "Abertos"
@@ -406,26 +406,26 @@ Static Function rqPerYear(cContent)
   cQuery += " ORDER BY substring(ZZ1_DATA, 5, 2) "
 
   cQuery := ChangeQuery( cQuery )
-  tcQuery cQuery new alias 'QRY'
+  tcQuery cQuery new alias 'QRYPerYear'
 
-  if QRY->( !EOF( ) )
+  if QRYPerYear->( !EOF( ) )
 
-    while QRY->( !EOF( ) )
+    while QRYPerYear->( !EOF( ) )
 
-      nPos := ascan(aMeses, {|x| x == QRY->mes})
+      nPos := ascan(aMeses, {|x| x == QRYPerYear->mes})
 
-      if QRY->ZZ1_STATUS == 'A'
-        aAbertos[nPos] := QRY->quantidade
-      elseif QRY->ZZ1_STATUS == 'F'
-        aConcluidos[nPos] := QRY->quantidade
-      elseif QRY->ZZ1_STATUS == 'E'
-        aErros[nPos] := QRY->quantidade
+      if QRYPerYear->ZZ1_STATUS == 'A'
+        aAbertos[nPos] := QRYPerYear->quantidade
+      elseif QRYPerYear->ZZ1_STATUS == 'F'
+        aConcluidos[nPos] := QRYPerYear->quantidade
+      elseif QRYPerYear->ZZ1_STATUS == 'E'
+        aErros[nPos] := QRYPerYear->quantidade
       endif
-      QRY->( dbSkip( ) )
+      QRYPerYear->( dbSkip( ) )
     endDo
 
   endif
-  QRY->( dbCloseArea( ) )
+  QRYPerYear->( dbCloseArea( ) )
 
   jAbertos := JsonObject():new()
     jAbertos["label"] := "Abertos"
@@ -511,16 +511,16 @@ Static Function rqPerYears(cContent)
   cQuery += " ORDER BY substring(ZZ1_DATA, 1, 4) "
 
   cQuery := ChangeQuery( cQuery )
-  tcQuery cQuery new alias 'QRY'
+  tcQuery cQuery new alias 'QRYPYears'
 
-  if QRY->( !EOF( ) )
+  if QRYPYears->( !EOF( ) )
 
-    while QRY->( !EOF( ) )
+    while QRYPYears->( !EOF( ) )
 
-      nPos := ascan(aYears, {|x| x == QRY->year})
+      nPos := ascan(aYears, {|x| x == QRYPYears->year})
 
       if nPos <= 0
-        aadd(aYears, QRY->year)
+        aadd(aYears, QRYPYears->year)
         aadd(aConcluidos, 0)
         aadd(aAbertos, 0)
         aadd(aErros, 0)
@@ -528,18 +528,18 @@ Static Function rqPerYears(cContent)
         nPos := len(aYears)
       endif
 
-      if QRY->ZZ1_STATUS == 'A'
-        aAbertos[nPos] := QRY->quantidade
-      elseif QRY->ZZ1_STATUS == 'F'
-        aConcluidos[nPos] := QRY->quantidade
-      elseif QRY->ZZ1_STATUS == 'E'
-        aErros[nPos] := QRY->quantidade
+      if QRYPYears->ZZ1_STATUS == 'A'
+        aAbertos[nPos] := QRYPYears->quantidade
+      elseif QRYPYears->ZZ1_STATUS == 'F'
+        aConcluidos[nPos] := QRYPYears->quantidade
+      elseif QRYPYears->ZZ1_STATUS == 'E'
+        aErros[nPos] := QRYPYears->quantidade
       endif
-      QRY->( dbSkip( ) )
+      QRYPYears->( dbSkip( ) )
     endDo
 
   endif
-  QRY->( dbCloseArea( ) )
+  QRYPYears->( dbCloseArea( ) )
 
   jAbertos := JsonObject():new()
     jAbertos["label"] := "Abertos"
@@ -600,6 +600,7 @@ Return jResponse:toJson()
 /*/
 Static Function getAllDocs(cContent)
   aDados := {}
+  oDados := JsonObject():new()
 
   BeginSql alias 'QRY'
     SELECT *
@@ -616,7 +617,7 @@ Static Function getAllDocs(cContent)
     oJson['data'] := stod(QRY->ZZ1_DATA)
     oJson['hora'] := stod(QRY->ZZ1_HORA)
     oJson['chave'] := alltrim(QRY->ZZ1_CHAVE)
-    oJson['documento'] := alltrim(QRY->ZZ1_DOCCTE)
+    oJson['documento'] := alltrim(QRY->ZZ1_NUMCTE)
     oJson['serie'] := alltrim(QRY->ZZ1_SERCTE)
     oJson['details'] := {}
 
@@ -640,4 +641,7 @@ Static Function getAllDocs(cContent)
     QRY->( dbSkip( ) )   
   endDo 
   QRY->( dbCloseArea() )
-Return aDados
+
+  oDados["data"] := aDados
+
+Return oDados:toJson()

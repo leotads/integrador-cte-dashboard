@@ -20,55 +20,21 @@ export class MonitorComponent {
         property: 'status',
         type: 'label',
         labels: [
-          { value: 'available', color: 'color-11', label: 'Available' },
-          { value: 'reserved', color: 'color-08', label: 'Reserved' },
-          { value: 'closed', color: 'color-07', label: 'Closed' }
+          { value: 'A', color: 'color-10', label: 'Aberto' },
+          { value: 'F', color: 'color-03', label: 'Integrado' },
+          { value: 'E', color: 'color-07', label: 'Erro' }
         ]
       },
       { property: 'filial' },
       { property: 'data' },
-      { property: 'tipo' },
       { property: 'documento' },
-      { property: 'serie' }
+      { property: 'serie' },
+      { property: 'acao' },
+      { property: 'chave' },
     ];
   columnsDefault: Array<PoTableColumn> = [];
   detail: any;
-  items: Array<any> = [
-      {
-        status: 'available',
-        filial: '01',
-        data: '14/10/2025',
-        tipo: 'CT-e',
-        documento: '123456789',
-        serie: 'CTE',
-        detail: [
-          {
-            package: 'Basic',
-            tour: 'City tour by public bus and visit to the main museums.',
-            time: '20:10:10',
-            distance: '1000'
-          },
-        ]
-      },
- 
-      {
-        status: 'closed',
-        filial: '01',
-        data: '13/10/2025',
-        tipo: 'CT-e',
-        documento: '987654321',
-        serie: 'CTE',
-        detail: [
-          {
-            package: 'Basic',
-            tour: 'City tour by public bus and visit to the main museums.',
-            time: '20:10:10',
-            distance: '1000'
-          },
-        ]
-      },
- 
-    ];
+  items: Array<any> = [];
   total: number = 0;
   totalExpanded = 0;
   initialColumns: Array<any> = [];
@@ -87,7 +53,7 @@ export class MonitorComponent {
       icon: 'an an-arrows-counter-clockwise', label: 'Reprocessar' 
     },
     { 
-      action: this.baixarXML.bind(this), 
+      action: this.openXML.bind(this), 
       icon: 'an an-download-simple', 
       label: 'Baixar' 
     }
@@ -120,7 +86,7 @@ export class MonitorComponent {
       next: (result) => {
         const data: any = JSON.parse(result);
 
-        this.items = data;
+        this.items = data.data;
       },
       error: (error) => error
     })
@@ -134,8 +100,10 @@ export class MonitorComponent {
 
   }
 
-  baixarXML() {
-
+  openXML() {
+//    const blob = new Blob([xmlData], { type: 'application/xml' });
+//    const url = window.URL.createObjectURL(blob);
+//    window.open(url, '_blank');
   }
 
   showMore(sort: PoTableColumnSort) {
