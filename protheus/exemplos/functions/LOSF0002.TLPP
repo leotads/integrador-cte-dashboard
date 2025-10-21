@@ -1,0 +1,218 @@
+#Include "topconn.ch"
+
+/*/{Protheus.doc}  LOSF0002
+Rotina JOB FAT CTe Via Schedule
+@type  User Function
+@author Andre Vicente 
+@since 15/10/2025
+@version version
+@param nil
+@return nil
+@Uso: 
+@see (links_or_references)
+/*/
+User Function LOSF0002()
+
+
+    Local aArea     := FWGetArea()
+    Local cAutoEmp  := "01"
+    Local cAutoFil  := "01010001"
+    Local cAutoAmb  := "FAT"
+    Local aTables := {"SC5","SC6","SC9","SE4","SB1","SB2","SF4","SF2"}
+ 
+	Local cCarga    := ""
+    Local cFil      := ""
+	Local cNumDoc   := ""
+	Local cTipRem   := ""
+	Local cTipPed, cIdMovRM
+    Local _cFilBkp := ""
+    Local cDoc      := ""
+    Local nTPJOB	:= ""
+
+    //Se o dicion�rio n�o estiver aberto, ir� preparar o ambiente
+    If Select("SX2") <= 0
+        RpcSetType(3)
+        RPCSetEnv(cAutoEmp, cAutoFil, "", "", cAutoAmb , "", aTables, , , ,)
+    EndIf
+
+    cTipRem   := GetNewPar("FS_TPPEDRC","025") //Tipo de Pedido que ser� tratado como remessa para Cliente diferente 
+	_cFilBkp  := cFilAnt
+    nTPJOB	  := GetNewPar("MV_YTPJOB",60)
+        
+	cMsgProc := ""
+	SF2->(dbSetOrder(1))
+
+
+        IF SELECT ("TMPZZ1") > 0
+            TMPZZ1->( dbCloseArea( ) )
+        ENDIF	
+        
+        BeginSql Alias  "TMPZZ1"
+    
+            %noparser%
+            
+            SELECT 
+               ZZ1.R_E_C_N_O_ AS RECZZ1
+               ZZ1.ZZ1_CHAVE  AS CHAVE,
+               ZZ1.ZZ1_NUMCTE AS DOC,
+               ZZ1.ZZ1_SERCTE AS SERIE,
+               ZZ1.ZZ1_STATUS AS INTEGRA,
+               ZZ1.ZZ1_XML    AS XMLCTE,
+               ZZ1.ZZ1_FILIAL AS FILIAL,
+               ZZ1.ZZ1_HORA   AS HR_INT,
+               ZZ1.ZZ1_DATA   AS DT_INT
+            FROM %TABLE:ZZ1% ZZ1
+            WHERE ZZ1.%NOTDEL%
+                    AND	ZZ1.ZZ1_STATUS = %Exp:'A'%
+                    AND ZZ1.ZZ1_CGC    = %Exp:' '%
+                  
+        EndSql
+      
+    	MEMOWRITE("C:\TEMP\LOSF0002.sql",GETLASTQUERY()[2]) 	
+
+        DbSelectArea('TMPZZ1')
+        TMPZZ1->(DbGoTop())
+           
+        While !TMPZZ1->(Eof()) 
+            
+            IF SELECT ("_TRB") > 0
+                 _TRB->( dbCloseArea( ) )
+            ENDIF	
+    
+            cFilAnt := TMPZZ1->FILIAL 
+            cCarga  := TMPZZ1->CARGA
+            cFil    := TMPZZ1->FILIAL   
+            cQry := "Exec [dbo].[NFSCARGA] '"+cFil+ "', '"+cCarga+ "'"
+            DbUseArea(.T., "TOPCONN", TcGenQry(,, cQry), "_TRB", .F., .T.)
+            DbSelectArea("_TRB")
+
+            While !_TRB->(Eof()) 
+
+                If Empty(_TRB->PEDIDO)  
+                     TMPZZ1->(dbSkip()) 
+				     Loop
+                Endif
+                //Inicializa��o de vari�veis
+                aPvlDocS := {}
+                nPrcVen := 0	    
+                cSerie  := "1"
+                cEmbExp := ""	    
+                cC5Num  := AllTrim(_TRB->PEDIDO)
+                cNumDoc:= Avkey(_TRB->F2_DOC,"F2_DOC")
+
+                DbSelectArea("SC5") 
+                DbSetOrder(1)
+                If DbSeek(xFilial("SC5")+cC5Num) 
+                    If !Empty(SC5->C5_NOTA) .or. SF2->(dbSeek(xFilial("SF2")+cNumDoc+cSerie))
+                         _TRB->(dbSkip()) 
+				         Loop
+                    Endif
+                Endif
+
+                SC5->(DbSetOrder(1))
+                SC5->(MsSeek(xFilial("SC5")+cC5Num))
+                cTipPed  := SC5->C5_XTIPPED
+                cIdMovRM := Alltrim(SC5->C5_IDMOV)
+
+                SC6->(dbSetOrder(1))
+                SC6->(MsSeek(xFilial("SC6")+SC5->C5_NUM))
+
+                //� necess�rio carregar o grupo de perguntas MT460A, se n�o ser� executado com os valores default.
+                Pergunte("MT460A",.F.)
+                
+                aPvlDocS := {}
+
+                // Obter os dados de cada item do pedido de vendas liberado para gerar o Documento de Sa�da
+                While SC6->(!Eof() .And. SC6->C6_FILIAL == xFilial("SC6")) .And. SC6->C6_NUM == SC5->C5_NUM 
+        
+                    SC9->(DbSetOrder(12))
+                    SC9->(MsSeek(xFilial("SC9")+alltrim(cCarga)+SC6->(C6_NUM+C6_ITEM))) //FILIAL+NUMERO+ITEM
+
+                    SE4->(DbSetOrder(1))
+                    SE4->(MsSeek(xFilial("SE4")+SC5->C5_CONDPAG) )  //FILIAL+CONDICAO PAGTO
+
+                    SB1->(DbSetOrder(1))
+                    SB1->(MsSeek(xFilial("SB1")+SC6->C6_PRODUTO))    //FILIAL+PRODUTO
+
+                    SB2->(DbSetOrder(1))
+                    SB2->(MsSeek(xFilial("SB2")+SC6->(C6_PRODUTO+C6_LOCAL))) //FILIAL+PRODUTO+LOCAL
+
+                    SF4->(DbSetOrder(1))
+                    SF4->(MsSeek(xFilial("SF4")+SC6->C6_TES))   //FILIAL+TES
+
+                    nPrcVen := SC9->C9_PRCVEN
+                    If ( SC5->C5_MOEDA <> 1 )
+                        nPrcVen := xMoeda(nPrcVen,SC5->C5_MOEDA,1,dDataBase)
+                    EndIf
+
+                    
+                  
+                    If Empty(SC6->C6_NOTA) .and. AllTrim(SC9->C9_PEDIDO) == ALLTRIM(_TRB->PEDIDO) .AND.  SC9->C9_CARGA = cCarga
+                        AAdd(aPvlDocS,{ SC9->C9_PEDIDO,;
+                            SC9->C9_ITEM,;
+                            SC9->C9_SEQUEN,;
+                            SC9->C9_QTDLIB,;
+                            nPrcVen,;
+                            SC9->C9_PRODUTO,;
+                            .F.,;
+                            SC9->(RecNo()),;
+                            SC5->(RecNo()),;
+                            SC6->(RecNo()),;
+                            SE4->(RecNo()),;
+                            SB1->(RecNo()),;
+                            SB2->(RecNo()),;
+                            SF4->(RecNo())})
+                    EndIf
+                       
+                    SC6->(DbSkip())
+                EndDo
+
+                SetFunName("MATA461")	
+                
+                
+                cDoc := MaPvlNfs(  /*aPvlNfs*/         aPvlDocS,;  // 01 - Array com os itens a serem gerados 
+                             /*cSerieNFS*/       cSerie,;    // 02 - Serie da Nota Fiscal
+                             /*lMostraCtb*/      .F.,;       // 03 - Mostra Lan�amento Cont�bil
+                             /*lAglutCtb*/       .F.,;       // 04 - Aglutina Lan�amento Cont�bil
+                            /*lCtbOnLine*/      .F.,;       // 05 - Contabiliza On-Line
+                            /*lCtbCusto*/       .T.,;       // 06 - Contabiliza Custo On-Line
+                            /*lReajuste*/       .F.,;       // 07 - Reajuste de pre�o na Nota Fiscal
+                            /*nCalAcrs*/        0,;         // 08 - Tipo de Acr�scimo Financeiro
+                            /*nArredPrcLis*/    0,;         // 09 - Tipo de Arredondamento
+                            /*lAtuSA7*/         .T.,;       // 10 - Atualiza Amarra��o Cliente x Produto
+                            /*lECF*/            .F.,;       // 11 - Cupom Fiscal
+                           /*cEmbExp*/         cEmbExp,;   // 12 - N�mero do Embarque de Exporta��o
+                            /*bAtuFin*/         {||},;      // 13 - Bloco de C�digo para complemento de atualiza��o dos t�tulos financeiros
+                            /*bAtuPGerNF*/      {||},;      // 14 - Bloco de C�digo para complemento de atualiza��o dos dados ap�s a gera��o da Nota Fiscal
+                             /*bAtuPvl*/         {||},;      // 15 - Bloco de C�digo de atualiza��o do Pedido de Venda antes da gera��o da Nota Fiscal
+                           /*bFatSE1*/         {|| .T. },; // 16 - Bloco de C�digo para indicar se o valor do Titulo a Receber ser� gravado no campo F2_VALFAT quando o par�metro MV_TMSMFAT estiver com o valor igual a "2".
+                           /*dDataMoe*/        dDatabase,; // 17 - Data da cota��o para convers�o dos valores da Moeda do Pedido de Venda para a Moeda Forte
+                           /*lJunta*/          .F.)       // 18 - Aglutina Pedido Iguais
+                            
+
+
+                If !Empty(cDoc)
+                    U_FSWMSP01(AllTrim(_TRB->F2_DOC),FwGetUserName(RetCodUsr()),"B2CFAT","I","Documento de Sa�da: " + cSerie + "-" + cDoc + ", gerado com sucesso via job.","")
+                    
+                EndIf
+
+                //RESET ENVIRONMENT
+                DbSelectArea("_TRB")
+                _TRB->(dbSkip()) 
+            Enddo
+   
+       //DbSelectArea("_TRB")
+   
+       TMPZZ1->(dbSkip()) 
+       cFilAnt := _cFilBkp
+    
+    Enddo
+   
+    DbCloseArea()
+
+    FWRestArea(aArea)
+ 
+    RpcClearEnv() //Encerra o ambiente, fechando as devidas conex�es
+ 
+Return .T.
+
