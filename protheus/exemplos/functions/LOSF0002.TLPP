@@ -29,16 +29,14 @@ User Function LOSF0002()
     Local cDoc      := ""
     Local nTPJOB	:= ""
 
-    //Se o dicionï¿½rio nï¿½o estiver aberto, irï¿½ preparar o ambiente
+    //Se o dicionario estiver aberto, ira preparar o ambiente
     If Select("SX2") <= 0
         RpcSetType(3)
         RPCSetEnv(cAutoEmp, cAutoFil, "", "", cAutoAmb , "", aTables, , , ,)
     EndIf
 
-    cTipRem   := GetNewPar("FS_TPPEDRC","025") //Tipo de Pedido que serï¿½ tratado como remessa para Cliente diferente 
-	_cFilBkp  := cFilAnt
-    nTPJOB	  := GetNewPar("MV_YTPJOB",60)
-        
+   _cFilBkp  := cFilAnt
+           
 	cMsgProc := ""
 	SF2->(dbSetOrder(1))
 
@@ -72,27 +70,32 @@ User Function LOSF0002()
 
         DbSelectArea('TMPZZ1')
         TMPZZ1->(DbGoTop())
-           
+       
         While !TMPZZ1->(Eof()) 
+           
+            ZZ1->(DbGoTo(nRecZZ1))
+            cXml := ZZ1->XMLCTE
+          
+            //Transforma o CTE em um objeto
+            oXml := XmlParser( cXml, "_", @cError, @cWarning )
+                    
+            If ValType(oXml) != "O"
+                cErrorN := 'xml nao pode ser convertido em objeto'
+                Return(.f.)
+            Endif
             
-            IF SELECT ("_TRB") > 0
-                 _TRB->( dbCloseArea( ) )
-            ENDIF	
-    
+            lRetorno := XMLCTE(oXml,@cNota, @cError ,nTipo)
+        
+            If lRetorno
+                lRetorno :=  LOSF0003(p_cCodCli,pcLoja,pnVlr,pnVunit,pnTotal)
+            Endif
+       
             cFilAnt := TMPZZ1->FILIAL 
             cCarga  := TMPZZ1->CARGA
             cFil    := TMPZZ1->FILIAL   
-            cQry := "Exec [dbo].[NFSCARGA] '"+cFil+ "', '"+cCarga+ "'"
-            DbUseArea(.T., "TOPCONN", TcGenQry(,, cQry), "_TRB", .F., .T.)
-            DbSelectArea("_TRB")
-
+       
             While !_TRB->(Eof()) 
 
-                If Empty(_TRB->PEDIDO)  
-                     TMPZZ1->(dbSkip()) 
-				     Loop
-                Endif
-                //Inicializaï¿½ï¿½o de variï¿½veis
                 aPvlDocS := {}
                 nPrcVen := 0	    
                 cSerie  := "1"
@@ -101,23 +104,12 @@ User Function LOSF0002()
                 cNumDoc:= Avkey(_TRB->F2_DOC,"F2_DOC")
 
                 DbSelectArea("SC5") 
-                DbSetOrder(1)
-                If DbSeek(xFilial("SC5")+cC5Num) 
-                    If !Empty(SC5->C5_NOTA) .or. SF2->(dbSeek(xFilial("SF2")+cNumDoc+cSerie))
-                         _TRB->(dbSkip()) 
-				         Loop
-                    Endif
-                Endif
-
                 SC5->(DbSetOrder(1))
                 SC5->(MsSeek(xFilial("SC5")+cC5Num))
-                cTipPed  := SC5->C5_XTIPPED
-                cIdMovRM := Alltrim(SC5->C5_IDMOV)
-
+               
                 SC6->(dbSetOrder(1))
                 SC6->(MsSeek(xFilial("SC6")+SC5->C5_NUM))
 
-                //ï¿½ necessï¿½rio carregar o grupo de perguntas MT460A, se nï¿½o serï¿½ executado com os valores default.
                 Pergunte("MT460A",.F.)
                 
                 aPvlDocS := {}
@@ -144,9 +136,7 @@ User Function LOSF0002()
                     If ( SC5->C5_MOEDA <> 1 )
                         nPrcVen := xMoeda(nPrcVen,SC5->C5_MOEDA,1,dDataBase)
                     EndIf
-
-                    
-                  
+    
                     If Empty(SC6->C6_NOTA) .and. AllTrim(SC9->C9_PEDIDO) == ALLTRIM(_TRB->PEDIDO) .AND.  SC9->C9_CARGA = cCarga
                         AAdd(aPvlDocS,{ SC9->C9_PEDIDO,;
                             SC9->C9_ITEM,;
@@ -163,12 +153,11 @@ User Function LOSF0002()
                             SB2->(RecNo()),;
                             SF4->(RecNo())})
                     EndIf
-                       
+                      
                     SC6->(DbSkip())
                 EndDo
 
                 SetFunName("MATA461")	
-                
                 
                 cDoc := MaPvlNfs(  /*aPvlNfs*/         aPvlDocS,;  // 01 - Array com os itens a serem gerados 
                              /*cSerieNFS*/       cSerie,;    // 02 - Serie da Nota Fiscal
@@ -193,16 +182,8 @@ User Function LOSF0002()
 
                 If !Empty(cDoc)
                     U_FSWMSP01(AllTrim(_TRB->F2_DOC),FwGetUserName(RetCodUsr()),"B2CFAT","I","Documento de Saï¿½da: " + cSerie + "-" + cDoc + ", gerado com sucesso via job.","")
-                    
                 EndIf
 
-                //RESET ENVIRONMENT
-                DbSelectArea("_TRB")
-                _TRB->(dbSkip()) 
-            Enddo
-   
-       //DbSelectArea("_TRB")
-   
        TMPZZ1->(dbSkip()) 
        cFilAnt := _cFilBkp
     
@@ -216,3 +197,261 @@ User Function LOSF0002()
  
 Return .T.
 
+
+
+/*/{Protheus.doc} XMLCTE
+    (long_description)
+    @type  Static Function
+    @author user
+    @since 20/10/2025
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function XMLCTE(oXml,cNotaG,cXmlRec,nChama)
+
+Local lRet          := .T.
+Local lRetorno      := .F.
+Local nCont         := 0
+Local lLancado      := .F.
+Private cFilorig    := '' 
+Private cEspecie    := "CTE"
+Private cVersaoCTE  := ''
+Private cChave_Nfe  := ''
+Private cCNPJ_FIL   := ''
+Private cNatOp      := ''
+Private cCNPJ_TOM   := ''
+Private cNum        := ''
+Private cSerie      := ''
+Private cDtEmissao  := ''
+Private cHrEmissao  := ''
+Private cCfopFrt    := ''
+Private cEstIni     := ''
+Private cEstFim     := ''
+Private cTesCTe     := ''
+Private cCodCli     := ''
+Private cLjFornec   := ''
+Private cTipoCli    := ''
+Private aCSTTipo    := ""
+Private cCstCte     := ''
+Private cMunIni     := ''
+Private cMunFim     := ''
+Private cEstFil     := ''
+Private cEstTom     := ''
+Default nChama      := 0
+Private cMunIniCTE  := ""
+Private cMunFimCTE  := ""
+Private cChaveCTE   := ""
+
+
+If ValType(oXml) != "O"
+    cErrorN := 'xml nao pode ser convertido em objeto'
+    Return(.f.)
+Endif
+
+cVersaoCTE := oXML:_CTEProc:_versao:TEXT  
+
+cChave_Nfe := SubStr(oxml:_CTEPROC:_CTE:_INFCTE:_ID:TEXT,4)
+
+If Empty(cChave_Nfe)
+	cErrorN := 'Chave de acesso do CTe não informada'
+	Return(.f.)
+EndIf     
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_EMIT, "_CNPJ" ) != Nil
+    cCNPJ_FIL := oxml:_CTEPROC:_CTE:_INFCTE:_EMIT:_CNPJ:TEXT 
+EndIF 
+
+aSm0 := FWLoadSM0()
+nPos := Ascan(aSM0,{|x| Alltrim(x[18]) == Alltrim(cCNPJ_FIL)})			
+//nPos := 1
+cFilorig := aSm0[nPos,02] //SM0->M0_CODFIL
+cfilant := cFilorig
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_EMIT, "_ENDEREMIT" ) != Nil
+    cEstFil := UPPER(oxml:_CTEPROC:_CTE:_INFCTE:_EMIT:_ENDEREMIT:_UF:TEXT )
+EndIF 
+
+cNatOp	:= PadR(oXml:_cteProc:_cte:_Infcte:_IDE:_NATOP:Text,45," ")
+
+//Busca pelo cnpj do Tomador 
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_IDE, "_TOMA4" ) <> NIL
+    cCNPJ_TOM := oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA4:_CNPJ:TEXT
+    cEstTom   := UPPER(oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA4:_ENDERTOMA:_UF:TEXT)
+ElseIF XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE, "_REM" ) <> NIL 
+    If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_REM, "_CNPJ" ) <> NIL
+        cCNPJ_TOM := oXml:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:TEXT 
+    Elseif XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_REM, "_CPF" ) <> NIL
+        cCNPJ_TOM := oXml:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:TEXT 
+    EndIf 
+
+    cEstTom   := UPPER(oXml:_CTEPROC:_CTE:_INFCTE:_REM:_ENDERREME:_UF:TEXT)
+EndIf 
+
+
+cNum	:= PadL(Alltrim(oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_NCT:TEXT),9,"0") //Nro da Nota
+cSerie	:= PadR(oXml:_CTEProc:_CTE:_InfCTE:_IDE:_Serie:Text,3," ")
+cNotaG  := cNum
+
+cDtEmissao	:= oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_dhEmi:Text
+cHrEmissao  := substr(cDtEmissao,12,5)
+cDtEmissao	:= Substr(cDtEmissao,9,2)+"/"+Substr(cDtEmissao,6,2)+"/"+Substr(cDtEmissao,1,4)
+            
+nTotalMerc      := Val(oXml:_CTEPROC:_CTE:_INFCTE:_VPREST:_VTPREST:Text)
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_IDE, "_CFOP" ) != Nil
+    cCfopFrt := oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_CFOP:TEXT 
+EndIF
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_IDE, "_UFINI" ) != Nil //<UFIni>SP</UFIni>
+    cEstIni := upper(oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_UFINI:TEXT)
+ENDIF
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_IDE, "_UFFIM" ) != Nil //<UFFim>RJ</UFFim>
+    cEstFim := upper(oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT)
+ENDIF
+
+// Pega municipio de origem e destino da carga gravo da SF2 para ser utilizado no sped D100
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_IDE, "_CMUNINI" ) != Nil //<cMunIni>3550308</cMunIni>
+    cMunIniCTE := oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_CMUNINI:TEXT
+EndIf 
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_IDE, "_CMUNFIM" ) != Nil //<cMunFim>3304557</cMunFim>
+    cMunFimCTE := oXml:_CTEPROC:_CTE:_INFCTE:_IDE:_CMUNFIM:TEXT
+EndIf 
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_EMIT:_ENDEREMIT, "_CMUN" ) != Nil 
+    cMunIni := oXml:_CTEPROC:_CTE:_INFCTE:_EMIT:_ENDEREMIT:_CMUN:TEXT
+EndIf 
+
+If XmlChildEx( oXml:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST, "_CMUN" ) != Nil 
+    cMunFim := oXml:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST:_CMUN:TEXT
+EndIf 
+
+DBSelectArea("SA1")
+DBSetOrder(3)
+If DbSeek(xFilial("SA1")+cCNPJ_TOM)
+	cCodCli		:= SA1->A1_COD
+	cLjFornec	:= SA1->A1_LOJA
+    cTipoCli    := SA1->A1_PESSOA
+Else
+    CadSA1(oXml,oXml:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)
+Endif
+
+Return(_lRet)
+
+/*/{Protheus.doc} CadSA1
+    (long_description)
+    @type  Static Function
+    @author Andre Vicente
+    @since 18/10/2025
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function CadSA1(oBjt,oEndre)
+
+	Local oModel	:= Nil
+	Local oView		:= Nil
+	Local cCNPJ		:= ""
+	Local cIE		:= ""
+	Local cFantasia	:= ""
+	Local cRazao	:= ""
+	
+	Local cCep		:= ""
+	Local cCodMun	:= ""
+	Local cCodPais	:= ""
+	Local cCodTel	:= ""
+	Local cNumero	:= ""
+	Local cUF		:= ""
+	Local cBairro	:= ""
+	Local cEndereco	:= ""
+	Local cMuncipio	:= ""
+	Local cCodRegiao := ""
+		
+	
+    If AttIsMemberOf(oBjt,"_CNPJ") 
+        cCNPJ :=  Upper(AllTrim(oBjt:_CNPJ:Text))
+    End If
+
+    If AttIsMemberOf(oBjt,"_IE") 
+        cIE   :=  Upper(AllTrim(oBjt:_IE:Text))
+    End If
+    
+    If AttIsMemberOf(oBjt,"_XNOME") 
+        cRazao  :=  Upper(AllTrim(oBjt:_XNOME:Text))
+    End If
+
+    If AttIsMemberOf(oBjt,"_XFANT") 
+        cFantasia  :=  Upper(AllTrim(oBjt:_XFANT:Text))
+    Else
+        cFantasia := cRazao
+    End If
+    
+    If AttIsMemberOf(oEndre,"_CEP") 
+        cCEP  :=  Upper(AllTrim(oEndre:_CEP:Text))
+    End If
+    
+  	If AttIsMemberOf(oEndre,"_XMUN") 
+        cMuncipio  :=  Upper(AllTrim(oEndre:_XMUN:Text))
+    End If
+
+	If AttIsMemberOf(oEndre,"_XBAIRRO") 
+        cBairro  :=  Upper(AllTrim(oEndre:_XBAIRRO:Text))
+    End If
+
+	If AttIsMemberOf(oEndre,"_UF") 
+        cUF  :=  Upper(AllTrim(oEndre:_UF:Text))
+    End If
+
+	If AttIsMemberOf(oEndre,"_NRO") 
+        cNumero  :=  Upper(AllTrim(oEndre:_NRO:Text))
+    End If
+    
+    If AttIsMemberOf(oEndre,"_XLGR") 
+        cEndereco  :=  Upper(AllTrim(oEndre:_XLGR:Text)) + "," + cNumero
+    End If
+	
+	If AttIsMemberOf(oEndre,"_FONE") 
+        cCodTel  :=  Upper(AllTrim(oEndre:_FONE:Text))
+    End If
+	
+	If AttIsMemberOf(oEndre,"_CPAIS") 
+        cCodPais  :=  Upper(AllTrim(oEndre:_CPAIS:Text))
+    End If
+    
+	If AttIsMemberOf(oEndre,"_CMUN") 
+        cCodMun  :=  Upper(AllTrim(oEndre:_CMUN:Text))
+    End If  
+    
+    oModel := FWLoadModel("CRMA980")
+    oModel:SetOperation(MODEL_OPERATION_INSERT)
+    oModel:Activate()
+    
+    oModel:SetValue('SA1MASTER', 'A1_COD'  	  , GETSXENUM("SA1", "A1_COD"))
+    oModel:SetValue('SA1MASTER', 'A1_LOJA'    , "01")
+    oModel:SetValue('SA1MASTER', 'A1_PESSOA'  , IIF(LEN(cCNPJ) == 14, "J", "F"))
+    oModel:SetValue('SA1MASTER', 'A1_TIPO'    , "F")
+    oModel:SetValue('SA1MASTER', 'A1_CGC'     , cCNPJ)
+    oModel:SetValue('SA1MASTER', 'A1_NOME'    , Substr(cRazao,1,TAMSX3("A1_NOME")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_NREDUZ'  , Substr(cFantasia,1,TAMSX3("A1_NREDUZ")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_END'     , Substr(cEndereco,1,TAMSX3("A1_END")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_BAIRRO'  , Substr(cBairro,1,TAMSX3("A1_BAIRRO")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_EST'     , cUF)
+    oModel:SetValue('SA1MASTER', 'A1_MUN'     , Substr(cMuncipio,1,TAMSX3("A1_MUN")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_COD_MUN' , Substr(cCodMun,3,TAMSX3("A1_COD_MUN")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_CEP'     , Substr(cCEP,1,TAMSX3("A1_CEP")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_DDD'     , Substr(cCodTel,1,2))
+    oModel:SetValue('SA1MASTER', 'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_INSCR'   , Substr(cIE,1,TAMSX3("A1_INSCR")[1]))
+    oModel:SetValue('SA1MASTER', 'A1_CDRDES'  , cCodRegiao)
+    oModel:SetValue('SA1MASTER', 'A1_CODPAIS' , "01058")
+       
+Return
