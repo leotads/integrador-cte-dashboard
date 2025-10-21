@@ -66,6 +66,7 @@ User Function LOSF0001(nRecNoZZ1)
  
 Return
 
+
 /*/{Protheus.doc} LOSF0001B
  *Usada no reprocessamento dos dados fiscais
 /*/
