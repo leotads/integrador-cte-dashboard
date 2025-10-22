@@ -1,0 +1,124 @@
+#INCLUDE 'Protheus.ch'
+
+/*/{Protheus.doc} LOSF0004
+    (long_description)
+    @type  Static Function
+    @author Andre Vicente
+    @since 18/10/2025
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+User Function LOSF0004(oBjt,oEndre)
+
+	Local cCNPJ		:= ""
+	Local cIE		:= ""
+	Local cFantasia	:= ""
+	Local cRazao	:= ""
+	Local cCep		:= ""
+	Local cCodMun	:= ""
+	Local cCodPais	:= ""
+	Local cCodTel	:= ""
+	Local cNumero	:= ""
+	Local cUF		:= ""
+	Local cBairro	:= ""
+	Local cEndereco	:= ""
+	Local cMuncipio	:= ""
+	Local cCodRegiao := ""
+    Local aSA1Auto := {}
+    Local aAI0Auto := {}
+    Local nOpcAuto := 3//MODEL_OPERATION_INSERT
+    Local lRet := .T.
+    Private lMsErroAuto := .F.
+ 
+    If AttIsMemberOf(oBjt,"_CNPJ") 
+        cCNPJ :=  Upper(AllTrim(oBjt:_CNPJ:Text))
+    End If
+
+    If AttIsMemberOf(oBjt,"_IE") 
+        cIE   :=  Upper(AllTrim(oBjt:_IE:Text))
+    End If
+    
+    If AttIsMemberOf(oBjt,"_XNOME") 
+        cRazao  :=  Upper(AllTrim(oBjt:_XNOME:Text))
+    End If
+
+    If AttIsMemberOf(oBjt,"_XFANT") 
+        cFantasia  :=  Upper(AllTrim(oBjt:_XFANT:Text))
+    Else
+        cFantasia := cRazao
+    End If
+    
+    If AttIsMemberOf(oEndre,"_CEP") 
+        cCEP  :=  Upper(AllTrim(oEndre:_CEP:Text))
+    End If
+    
+  	If AttIsMemberOf(oEndre,"_XMUN") 
+        cMuncipio  :=  Upper(AllTrim(oEndre:_XMUN:Text))
+    End If
+
+	If AttIsMemberOf(oEndre,"_XBAIRRO") 
+        cBairro  :=  Upper(AllTrim(oEndre:_XBAIRRO:Text))
+    End If
+
+	If AttIsMemberOf(oEndre,"_UF") 
+        cUF  :=  Upper(AllTrim(oEndre:_UF:Text))
+    End If
+
+	If AttIsMemberOf(oEndre,"_NRO") 
+        cNumero  :=  Upper(AllTrim(oEndre:_NRO:Text))
+    End If
+    
+    If AttIsMemberOf(oEndre,"_XLGR") 
+        cEndereco  :=  Upper(AllTrim(oEndre:_XLGR:Text)) + "," + cNumero
+    End If
+	
+	If AttIsMemberOf(oEndre,"_FONE") 
+        cCodTel  :=  Upper(AllTrim(oEndre:_FONE:Text))
+    End If
+	
+	If AttIsMemberOf(oEndre,"_CPAIS") 
+        cCodPais  :=  Upper(AllTrim(oEndre:_CPAIS:Text))
+    End If
+    
+	If AttIsMemberOf(oEndre,"_CMUN") 
+        cCodMun  :=  Upper(AllTrim(oEndre:_CMUN:Text))
+    End If  
+
+    //----------------------------------
+    // Dados do Cliente
+    //----------------------------------
+    aAdd(aSA1Auto,{'A1_COD'  	  , GETSXENUM("SA1", "A1_COD"),Nil})
+    aAdd(aSA1Auto,{'A1_LOJA'    , "01",Nil})
+    aAdd(aSA1Auto,{ 'A1_PESSOA'  , IIF(LEN(cCNPJ) == 14, "J", "F"),Nil})
+    aAdd(aSA1Auto,{ 'A1_TIPO'    , "F",Nil})
+    aAdd(aSA1Auto,{'A1_CGC'     , cCNPJ,Nil})
+    aAdd(aSA1Auto,{ 'A1_NOME'    , Substr(cRazao,1,TAMSX3("A1_NOME")[1]),Nil})
+    aAdd(aSA1Auto,{ 'A1_NREDUZ'  , Substr(cFantasia,1,TAMSX3("A1_NREDUZ")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_END'     , Substr(cEndereco,1,TAMSX3("A1_END")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_BAIRRO'  , Substr(cBairro,1,TAMSX3("A1_BAIRRO")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_EST'     , cUF,Nil})
+    aAdd(aSA1Auto,{'A1_MUN'     , Substr(cMuncipio,1,TAMSX3("A1_MUN")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_COD_MUN' , Substr(cCodMun,3,TAMSX3("A1_COD_MUN")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_CEP'     , Substr(cCEP,1,TAMSX3("A1_CEP")[1]),Nil})
+    aAdd(aSA1Auto,{ 'A1_DDD'     , Substr(cCodTel,1,2),Nil})
+    aAdd(aSA1Auto,{'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_INSCR'   , Substr(cIE,1,TAMSX3("A1_INSCR")[1]),Nil})
+    aAdd(aSA1Auto,{'A1_CDRDES'  , cCodRegiao,Nil})
+    aAdd(aSA1Auto,{ 'A1_CODPAIS' , "01058",Nil})
+    aAdd(aSA1Auto,{ 'A1_MSBLQL'  , "2",Nil})
+    aAdd(aSA1Auto,{"A1_INCISS" ,"N" ,Nil})
+  
+    MSExecAuto({|a,b,c| CRMA980(a,b,c)}, aSA1Auto, nOpcAuto, aAI0Auto)
+ 
+    If lMsErroAuto 
+       lRet := lMsErroAuto
+        MostraErro() // Não funciona na execução via JOB
+    Else
+        Conout("Cliente incluído com sucesso!")
+    EndIf
+    
+Return lRet

@@ -16,7 +16,6 @@ Funcao que processara os xmls
 User Function LOSF0001()
 
     Local cRet
-    Local cEmailSup := ""
     Private cErrorBlock := ''
     Private cYNumSer    := ''
     Private cYNumNF     := ''
@@ -47,7 +46,7 @@ User Function LOSF0001()
         FROM %TABLE:ZZ1% ZZ1
         WHERE ZZ1.%NOTDEL%
                 AND	ZZ1.ZZ1_STATUS = %Exp:'A'%
-                // AND	ZZ1.ZZ1_SERCTE <> ' '
+                AND	ZZ1.ZZ1_ACAO  = %Exp:'I'%
                 // AND ZZ1.ZZ1_CGC    = %Exp:' '%
                 
     EndSql
@@ -221,8 +220,8 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
         RecLock('ZZ1', .F.)
             ZZ1->ZZ1_CGC := cCNPJCli
         ZZ1->(MsUnLock())
-
-        Return 'Cliente(tomador) nao cadastrado no Protheus ' + cCNPJCli
+          U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)
+        //Return 'Cliente(tomador) nao cadastrado no Protheus ' + cCNPJCli
     Else
         cCODCli := SA1->A1_COD
         cLojCli := SA1->A1_LOJA
@@ -233,11 +232,11 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
         ZZ1->ZZ1_FILCTE := cFilAnt
         ZZ1->ZZ1_CLIENT := SA1->A1_COD
         ZZ1->ZZ1_LOJA   := SA1->A1_LOJA
-    ZZ1->(MsUnLock())
+        ZZ1->(MsUnLock())
     //Verifica o remetente, se nao tiver, GRAVA NA SA1
     SA1->(dbSetOrder(3))
     If ! SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJRem,TamSx3("A1_CGC")[1]) ))
-        cAux := GravaSA1(cCNPJRem,cNomRem)
+        cAux :=   U_LOSF0004(oCTE,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)
         If Empty(cAux)
             cCODRem := SA1->A1_COD
             cLojRem := SA1->A1_LOJA
@@ -265,7 +264,7 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
     //Verifica o destinatario, se nao tiver, nao usa        
     SA1->(dbSetOrder(3))
     If ! SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
-        cAux := GravaSA1(cCnpjDest,cNomDest)
+        cAux :=    U_LOSF0004(oCTE,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST,aVars)//GravaSA1(cCnpjDest,cNomDest)
         If Empty(cAux)
             cCODDes := SA1->A1_COD
             cLojDes := SA1->A1_LOJA
@@ -1009,29 +1008,6 @@ Static Function ExcluiCTE()
     END TRANSACTION
 Return cMensagem
 
-/*/{Protheus.doc} GravaSA1
- * Grava destinatario, caso necessario
-/*/
-Static Function GravaSA1(cCNPJ, cNome)
-    Local aVetor        := {}
-    Local lMsErroAuto   := .F.
-    Local cRet := ""
-    Local cPessoa := IIF(LEN(ALLTRIM(cCNPJ)) == 14, 'J', 'F')
-    Local cCodSa1 := IIF( cPessoa == 'J', SUBSTR(ALLTRIM(cCNPJ),1,8), SUBSTR(ALLTRIM(cCNPJ),1,9) )
-    Local cCodLoj := IIF( cPessoa == 'J', SUBSTR(ALLTRIM(cCNPJ),9,4), '0000' )
-        
-    RecLock('SA1', .T.)
-        SA1->A1_FILIAL := xFilial("SA1")
-        SA1->A1_COD := cCodSa1
-        SA1->A1_LOJA := cCodLoj
-        SA1->A1_CGC := cCNPJ
-        SA1->A1_NOME := cNome
-        SA1->A1_NREDUZ := cNome
-        SA1->A1_PESSOA := IIF(LEN(ALLTRIM(cCNPJ)) == 14, 'J', 'F')
-    SA1->(MsUnLock())
-            
-Return cRet
-
 /*/{Protheus.doc} VAlida e cria ZZ1 de inclusao
  * Antes realizar o cancelamento valida a existancia de um registro de
  * inclusao na tabela ZZ1.
@@ -1507,115 +1483,3 @@ User Function FUNC5CAN
 
 Return
 
-
-/*/{Protheus.doc} CadSA1
-    (long_description)
-    @type  Static Function
-    @author Andre Vicente
-    @since 18/10/2025
-    @version version
-    @param param_name, param_type, param_descr
-    @return return_var, return_type, return_description
-    @example
-    (examples)
-    @see (links_or_references)
-/*/
-Static Function CadSA1(oBjt,oEndre)
-
-	Local oModel	:= Nil
-	Local oView		:= Nil
-	Local cCNPJ		:= ""
-	Local cIE		:= ""
-	Local cFantasia	:= ""
-	Local cRazao	:= ""
-	
-	Local cCep		:= ""
-	Local cCodMun	:= ""
-	Local cCodPais	:= ""
-	Local cCodTel	:= ""
-	Local cNumero	:= ""
-	Local cUF		:= ""
-	Local cBairro	:= ""
-	Local cEndereco	:= ""
-	Local cMuncipio	:= ""
-	Local cCodRegiao := ""
-		
-	
-    If AttIsMemberOf(oBjt,"_CNPJ") 
-        cCNPJ :=  Upper(AllTrim(oBjt:_CNPJ:Text))
-    End If
-
-    If AttIsMemberOf(oBjt,"_IE") 
-        cIE   :=  Upper(AllTrim(oBjt:_IE:Text))
-    End If
-    
-    If AttIsMemberOf(oBjt,"_XNOME") 
-        cRazao  :=  Upper(AllTrim(oBjt:_XNOME:Text))
-    End If
-
-    If AttIsMemberOf(oBjt,"_XFANT") 
-        cFantasia  :=  Upper(AllTrim(oBjt:_XFANT:Text))
-    Else
-        cFantasia := cRazao
-    End If
-    
-    If AttIsMemberOf(oEndre,"_CEP") 
-        cCEP  :=  Upper(AllTrim(oEndre:_CEP:Text))
-    End If
-    
-  	If AttIsMemberOf(oEndre,"_XMUN") 
-        cMuncipio  :=  Upper(AllTrim(oEndre:_XMUN:Text))
-    End If
-
-	If AttIsMemberOf(oEndre,"_XBAIRRO") 
-        cBairro  :=  Upper(AllTrim(oEndre:_XBAIRRO:Text))
-    End If
-
-	If AttIsMemberOf(oEndre,"_UF") 
-        cUF  :=  Upper(AllTrim(oEndre:_UF:Text))
-    End If
-
-	If AttIsMemberOf(oEndre,"_NRO") 
-        cNumero  :=  Upper(AllTrim(oEndre:_NRO:Text))
-    End If
-    
-    If AttIsMemberOf(oEndre,"_XLGR") 
-        cEndereco  :=  Upper(AllTrim(oEndre:_XLGR:Text)) + "," + cNumero
-    End If
-	
-	If AttIsMemberOf(oEndre,"_FONE") 
-        cCodTel  :=  Upper(AllTrim(oEndre:_FONE:Text))
-    End If
-	
-	If AttIsMemberOf(oEndre,"_CPAIS") 
-        cCodPais  :=  Upper(AllTrim(oEndre:_CPAIS:Text))
-    End If
-    
-	If AttIsMemberOf(oEndre,"_CMUN") 
-        cCodMun  :=  Upper(AllTrim(oEndre:_CMUN:Text))
-    End If  
-    
-    oModel := FWLoadModel("CRMA980")
-    oModel:SetOperation(MODEL_OPERATION_INSERT)
-    oModel:Activate()
-    
-    oModel:SetValue('SA1MASTER', 'A1_COD'  	  , GETSXENUM("SA1", "A1_COD"))
-    oModel:SetValue('SA1MASTER', 'A1_LOJA'    , "01")
-    oModel:SetValue('SA1MASTER', 'A1_PESSOA'  , IIF(LEN(cCNPJ) == 14, "J", "F"))
-    oModel:SetValue('SA1MASTER', 'A1_TIPO'    , "F")
-    oModel:SetValue('SA1MASTER', 'A1_CGC'     , cCNPJ)
-    oModel:SetValue('SA1MASTER', 'A1_NOME'    , Substr(cRazao,1,TAMSX3("A1_NOME")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_NREDUZ'  , Substr(cFantasia,1,TAMSX3("A1_NREDUZ")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_END'     , Substr(cEndereco,1,TAMSX3("A1_END")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_BAIRRO'  , Substr(cBairro,1,TAMSX3("A1_BAIRRO")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_EST'     , cUF)
-    oModel:SetValue('SA1MASTER', 'A1_MUN'     , Substr(cMuncipio,1,TAMSX3("A1_MUN")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_COD_MUN' , Substr(cCodMun,3,TAMSX3("A1_COD_MUN")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_CEP'     , Substr(cCEP,1,TAMSX3("A1_CEP")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_DDD'     , Substr(cCodTel,1,2))
-    oModel:SetValue('SA1MASTER', 'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_INSCR'   , Substr(cIE,1,TAMSX3("A1_INSCR")[1]))
-    oModel:SetValue('SA1MASTER', 'A1_CDRDES'  , cCodRegiao)
-    oModel:SetValue('SA1MASTER', 'A1_CODPAIS' , "01058")
-       
-Return
