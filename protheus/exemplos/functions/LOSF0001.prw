@@ -272,19 +272,21 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
 
     //Verifica o destinatario, se nao tiver, nao usa        
     SA1->(dbSetOrder(3))
-    If ! SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
-        cAux :=    U_LOSF0004(oCTE,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST,aVars)//GravaSA1(cCnpjDest,cNomDest)
-        If Empty(cAux)
-            cCODDes := SA1->A1_COD
-            cLojDes := SA1->A1_LOJA
-            cNomDes := SA1->A1_NOME
-        Else
-            Return "Destinatarioio nao cadastrado na (SA1)"+CRLF+cAux
-        EndIf
+    If SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
+         cCODDes := SA1->A1_COD
+         cLojDes := SA1->A1_LOJA
+          cNomDes := SA1->A1_NOME
+       
     Else
-        cCODDes := SA1->A1_COD
-        cLojDes := SA1->A1_LOJA
-        cNomDes := SA1->A1_NOME
+        _lok :=   U_LOSF0004(oCTE,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST,aVars)//GravaSA1(cCnpjDest,cNomDest)
+        If _lok 
+            If SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
+                cCODDes := SA1->A1_COD
+                cLojDes := SA1->A1_LOJA
+                cNomDes := SA1->A1_NOME
+            Endif
+        EndIf    
+       
     EndIf
     
     aNFS := getNfs(oCTE)
