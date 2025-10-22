@@ -91,6 +91,7 @@ Return
  * Funcao que faz o processamento dos CTEs incluindo os pedidos de venda
 /*/
 Static Function ProcessaCTE(nRecZZ1, cTipo )
+    Local _lok        := .f.
     Private cAviso    := ''
     Private cErro     := ''
     Private cArqErro	:= "erroauto.txt"    
@@ -216,40 +217,48 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
 
     //Posiciona o cliente pelo CNPJ do tomador
     SA1->(dbSetOrder(3))
-    If ! SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJCli,TamSx3("A1_CGC")[1]) ))
-        RecLock('ZZ1', .F.)
-            ZZ1->ZZ1_CGC := cCNPJCli
-        ZZ1->(MsUnLock())
-          U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)
-        //Return 'Cliente(tomador) nao cadastrado no Protheus ' + cCNPJCli
-    Else
+    If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJCli,TamSx3("A1_CGC")[1]) ))
         cCODCli := SA1->A1_COD
         cLojCli := SA1->A1_LOJA
         cNomCli := SA1->A1_NOME
-    EndIf    
+        _lok := .T.
+    Else
+         RecLock('ZZ1', .F.)
+            ZZ1->ZZ1_CGC := cCNPJCli
+         ZZ1->(MsUnLock())
+        _lok :=  U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)
+    EndIf 
     
-    RecLock('ZZ1', .F.)
-        ZZ1->ZZ1_FILCTE := cFilAnt
-        ZZ1->ZZ1_CLIENT := SA1->A1_COD
-        ZZ1->ZZ1_LOJA   := SA1->A1_LOJA
-        ZZ1->(MsUnLock())
+    //Verifico se existe cliente cadastrado antes de gravar
+    If _lok
+        If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJCli,TamSx3("A1_CGC")[1]) ))
+            RecLock('ZZ1', .F.)
+                ZZ1->ZZ1_FILCTE := cFilAnt
+                ZZ1->ZZ1_CLIENT := SA1->A1_COD
+                ZZ1->ZZ1_LOJA   := SA1->A1_LOJA
+            ZZ1->(MsUnLock())
+        Endif
+    Endif
+
     //Verifica o remetente, se nao tiver, GRAVA NA SA1
-    SA1->(dbSetOrder(3))
-    If ! SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJRem,TamSx3("A1_CGC")[1]) ))
-        cAux :=   U_LOSF0004(oCTE,oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)
-        If Empty(cAux)
+    If _lok
+        SA1->(dbSetOrder(3))
+        If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJRem,TamSx3("A1_CGC")[1]) ))
             cCODRem := SA1->A1_COD
             cLojRem := SA1->A1_LOJA
             cNomRem := SA1->A1_NOME
+            _lok := .T.
         Else
-            Return "Remetente nao cadastrado na (SA1)"+CRLF+cAux
-        EndIf
-    Else
-        cCODRem := SA1->A1_COD
-        cLojRem := SA1->A1_LOJA
-        cNomRem := SA1->A1_NOME
-    EndIf   
-
+            _lok :=   U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_ENDERREME)
+            If _lok
+            If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJCli,TamSx3("A1_CGC")[1]) ))
+                cCODRem := SA1->A1_COD
+                cLojRem := SA1->A1_LOJA
+                cNomRem := SA1->A1_NOME
+                Endif
+            Endif    
+        EndIf   
+    Endif
     //Verifica qual TES devera ser utilizada de acordo com o CFOP
     cTes := getTes(cCFOP)
     cCst := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS45:_CST:TEXT","string")
@@ -295,11 +304,11 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
 	
 	TcQuery cQuery New Alias 'QRY'
 
-    If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'inclusao' // Inclui|Processa a nota
+    If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'I' // Inclui|Processa a nota
         ProcCte(aVends)
-    ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'cancelar' // Cancela nota
+    ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'C' // Cancela nota
         ExcluiCTE()
-    ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'inutilizar'// Inutiliza nota
+    ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'U'// Inutiliza nota
         InutCTE()
     ElseIf cTipo == 'R'
         If QRY->(!EoF())
@@ -312,6 +321,34 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
     EndIf
     
 Return cMensagem
+
+
+/*/{Protheus.doc} getTes
+ * Funcao que retorna a tes de acordo com o CFOP
+/*/
+Static Function getTes(cCFOP)
+    Local cRet := ''
+
+    cCFOP := SUBSTR(cCFOP,2,3)
+
+    cQuery := " SELECT F4_CODIGO FROM " + RetSqlTab('SF4')
+    cQuery += " WHERE D_E_L_E_T_ = ' '"
+    cQuery += " AND SUBSTR(F4_CF,2,3) = '" + cCFOP + "' "
+    cQuery += " AND F4_TIPO    = 'S'"  //TES DE SAIDA
+    cQuery += " AND F4_DUPLIC  = 'S' " //TEM QUE GERAR DUPLICATA
+    cQuery += " AND F4_ESTOQUE = 'N'"  //NAO PODE MOVIMENTAR ESTOQUE
+
+    If Select('QRYTES') > 0
+        QRYTES->(DbCloseArea())
+    EndIf
+
+    TcQuery cQuery New Alias 'QRYTES'
+
+    If QRYTES->(!Eof())
+        cRet := QRYTES->F4_CODIGO
+    EndIf
+
+Return cRet
 
 
 /*/{Protheus.doc} ProcFis
@@ -386,7 +423,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                 EndDo
             Next
             SF2->(DbGoTo(nRecnoSF2))
-            If lReprocessa .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'inclusao'
+            If lReprocessa .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'I'
                 //Cria o DT6, tabela do TMS, usada apenas para funcionar o registro fiscal
                 aDT6 := getArray(oCTE, 'DT6', nRecnoSF2)
                 DT6->(DBOrderNickname("DT6CHVCTE"))
@@ -405,6 +442,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                     ZZ1->ZZ1_STAFIS := 'P'
                 ZZ1->(MsUnLock())
 
+                /*    
                 For nZ := 1 To len(aNFS)
                     If !ZA8->(DbSeek(xFilial("ZA8") + ZZ1->ZZ1_CHAVE + PADR(aNFS[nZ],Len(ZZ1->ZZ1_CHAVE)) ))
                         RecLock('ZA8', .T.)
@@ -413,7 +451,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                         ZA8->(MsUnLock())
                     EndIf
                 Next
-
+                */
             Else
                 //Exclui DT6
                 DT6->(DBOrderNickname("DT6CHVCTE"))
@@ -426,7 +464,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                         ZZ1->ZZ1_STAFIS := 'A'
                     ZZ1->(MsUnLock())
                 EndIf
-                
+                /*
                 For nZ := 1 To len(aNFS)
                     If ZA8->(DbSeek(xFilial("ZA8") + ZZ1->ZZ1_CHAVE + PADR(aNFS[nZ],Len(ZZ1->ZZ1_CHAVE)) ))
                         RecLock('ZA8', .F.)
@@ -434,6 +472,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                         ZA8->(MsUnLock())
                     EndIf
                 Next
+                */
                 
             EndIf
             RECOVER
@@ -474,6 +513,7 @@ Static Function ProcCte(aVends)
     Local nDiasVenc := SuperGetMv("MS_DVENCT", .F., 365)
     Local _cNatureza := Alltrim(SuperGetMv("MS_NATCTE",.F.,"110101"))
     nDiasVenc := IIF( ValType(nDiasVenc) == 'C', Val(Alltrim(nDiasVenc)),nDiasVenc  )
+   
     oPedido:lMostrarErro := .F.
 
     //Prepapara as propriedades do objeto pedidos
@@ -570,32 +610,6 @@ Static Function ProcCte(aVends)
     EndIf
 
 Return cMensagem
-
-
-/*/{Protheus.doc} getTes
- * Funcao que retorna a tes de acordo com o CFOP
-/*/
-Static Function getTes(cCFOP)
-    Local cRet := ''
-
-    cQuery := " SELECT F4_CODIGO FROM " + RetSqlTab('SF4')
-    cQuery += " WHERE D_E_L_E_T_ = ''"
-    cQuery += " AND RIGHT(RTRIM(F4_CF),3) = '" + Right(cCFOP,3) + "' "
-    cQuery += " AND F4_TIPO    = 'S'"  //TES DE SAIDA
-    cQuery += " AND F4_DUPLIC  = 'S' " //TEM QUE GERAR DUPLICATA
-    cQuery += " AND F4_ESTOQUE = 'N'"  //NAO PODE MOVIMENTAR ESTOQUE
-
-    If Select('QRYTES') > 0
-        QRYTES->(DbCloseArea())
-    EndIf
-
-    TcQuery cQuery New Alias 'QRYTES'
-
-    If QRYTES->(!Eof())
-        cRet := QRYTES->F4_CODIGO
-    EndIf
-
-Return cRet
 
 /*/{Protheus.doc} setEmpresa
  * Seta a empresa de acordo com o CNPJ
