@@ -13,18 +13,30 @@ Funcao que processara os xmls
 @obs: 
 
 /*/
-User Function LOSF0001()
+User Function LOSF0001(nRecNoZZ1)
 
     Local cRet
+    Local   _cQuery   := ""
+	Local   _cQCorpo := ""
     Private cErrorBlock := ''
     Private cYNumSer    := ''
     Private cYNumNF     := ''
+    Default nRecNoZZ1 := 0
     
 
     If Empty(FunName())
-        PREPARE ENVIRONMENT EMPRESA '99' FILIAL '01'
+        PREPARE ENVIRONMENT EMPRESA '02' FILIAL '01010001'
     EndIf
     
+
+    If nRecNoZZ1 == 0
+        _cQuery := " AND ZZ1_STATUS = 'A' "
+    Else
+        _cQuery := " AND ZZ1.R_E_C_N_O_  = " + cValToChar(nRecNoZZ1)
+    EndIf
+
+    _cQCorpo := '%' + _cQuery  + '%'
+
     IF SELECT ("TMPZZ1") > 0
         TMPZZ1->( dbCloseArea( ) )
     ENDIF	
@@ -45,8 +57,9 @@ User Function LOSF0001()
             ZZ1.ZZ1_DATA   AS DT_INT
         FROM %TABLE:ZZ1% ZZ1
         WHERE ZZ1.%NOTDEL%
-                AND	ZZ1.ZZ1_STATUS = %Exp:'A'%
-                AND	ZZ1.ZZ1_ACAO  = %Exp:'I'%
+             %Exp:_cQCorpo%
+                //AND	ZZ1.ZZ1_STATUS = %Exp:'A'%
+                //AND	ZZ1.ZZ1_ACAO  = %Exp:'I'%
                 // AND ZZ1.ZZ1_CGC    = %Exp:' '%
                 
     EndSql
@@ -67,7 +80,7 @@ Return
 /*/{Protheus.doc} LOSF0001B
  *Usada no reprocessamento dos dados fiscais
 /*/
-Static Function FUNC005B(cTipo)
+User Function LOSF001B(cTipo)
     Local cTitulo := ''
     Default cTipo := ''
 
@@ -82,7 +95,8 @@ Static Function FUNC005B(cTipo)
     EndIf
 
     If !Empty(cTipo)
-        MSAguarde( { || ProcessaCTE(ZZ1->(Recno()), cTipo ) }, cTitulo ,"Processando...",.F.)
+        ProcessaCTE(ZZ1->(Recno()), cTipo )
+        //MSAguarde( { || ProcessaCTE(ZZ1->(Recno()), cTipo ) }, cTitulo ,"Processando...",.F.)
     EndIf
     
 Return
@@ -95,7 +109,7 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
     Private cAviso    := ''
     Private cErro     := ''
     Private cArqErro	:= "erroauto.txt"    
-    Private cCond     := SuperGetMv("MS_CONDTRA",.F.,"001")
+    Private cCond     := SuperGetMv("MS_CONDTRA",.F.,"000")
     Private cCNPJ, cCHVNFE, cTes, oCTE
     Private i, j, nZ
     Private bBlock 	    := ErrorBlock()
@@ -120,15 +134,15 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
         return 'Erro no objeto XML: ' + cErro
     EndIf
 
-    /*
-    If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'cancelar' // Cancela nota
+    
+    If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'E' // Cancela nota
         ExcluiCTE()
         return cMensagem
     ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'inutilizar' // Cancela nota
         InutCTE()
         return cMensagem
     EndIf
-    */
+    
 
     aVars := {}
     aAdd(aVars, {"Serie CTE"        , "cYNumSer"    , WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_SERIE:TEXT","string")})
@@ -308,8 +322,8 @@ Static Function ProcessaCTE(nRecZZ1, cTipo )
 
     If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'I' // Inclui|Processa a nota
         ProcCte(aVends)
-    ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'C' // Cancela nota
-        ExcluiCTE()
+    //ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'E' // Cancela nota
+      //  ExcluiCTE()
     ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'U'// Inutiliza nota
         InutCTE()
     ElseIf cTipo == 'R'
@@ -371,7 +385,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
     SF2->(DbGoTo(nRecnoSF2))
     If SF2->(!EoF())
         //Posiona o registro para processamento
-        cXml := ZZ1->ZZ1_BODY
+        cXml := ZZ1->ZZ1_XML
 
         //Transforma o CTE em um objeto
         oCTE := xmlParser(cXml, "_", @cErro, @cAviso)    
@@ -600,7 +614,7 @@ Static Function ProcCte(aVends)
             SE1->E1_PREFIXO  := cYNumSer
             SE1->E1_VENCTO  := dDataBase + nDiasVenc
             SE1->E1_VENCREA := dDataBase + nDiasVenc
-            SE1->E1_YTPFRET := cTpFrete
+            //SE1->E1_YTPFRET := cTpFrete
         SE1->(MsUnLock())
 
         RecLock('SC5', .F.)
@@ -608,7 +622,7 @@ Static Function ProcCte(aVends)
         SC5->(MsUnLock())
         //Posiciona o SF2 para montar os dados que serao usados para as tabelas
         // SF2->(DbGoTo(nRecNoSF2))        
-        ProcFis(.T.,nRecNoSF2)    
+        //ProcFis(.T.,nRecNoSF2)    COMENTADO POR ANDRE TEMPORARIAMENTE ,ESTAVA APAGANDO SF2 E CRIANDO NOVAMENTE
     EndIf
 
 Return cMensagem
@@ -686,7 +700,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         aAdd(aRet, {'F2_HORA'   , SubStr(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_DHEMI:TEXT, 12,5) })
         aAdd(aRet, {'F2_UFORIG' , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFINI:TEXT })
         aAdd(aRet, {'F2_UFDEST' , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT })        
-        aAdd(aRet, {'F2_EST'    , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT })    
+        aAdd(aRet, {'F2_EST'    , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT) })    
         nAliqIcms := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_pICMS:TEXT","string")
         nValIcms  := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT","string")
         If ValType( nAliqIcms) != 'U' .AND. ValType( nValIcms) != 'U'
@@ -695,7 +709,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         EndIf                      
     ElseIf cTab == 'SD2'
         aAdd(aRet, {'D2_CF'     , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_CFOP:TEXT}) 
-        aAdd(aRet, {'D2_EST'    , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT })                                  
+        aAdd(aRet, {'D2_EST'    , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT) })                                  
         aAdd(aRet, {'D2_ALIQCPB', nAliqCPB})
         aAdd(aRet, {'D2_VALCPB' , Round(SF2->F2_VALMERC * (nAliqCPB / 100),2) })
         aAdd(aRet, {'D2_BASECPB', SF2->F2_VALMERC })
@@ -712,7 +726,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         aAdd(aRet, {'F3_CFO'    , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_CFOP:TEXT})         
         aAdd(aRet, {'F3_ESPECIE', 'CTE'})         
         aAdd(aRet, {'F3_HORNFE' , SubStr(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_DHEMI:TEXT, 12,5) })
-        aAdd(aRet, {'F3_ESTADO' , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT })      
+        aAdd(aRet, {'F3_ESTADO' , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT) })      
         aAdd(aRet, {'F3_CLIDEST', cCODDes })
         aAdd(aRet, {'F3_LOJDEST', cLojDes })
         
@@ -743,7 +757,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
             aAdd(aRet, {'F3_VALICM', Val(nValIcms) })        
         EndIf  
 
-        If AllTrim(ZZ1->ZZ1_ACAO) == 'cancelar'
+        If AllTrim(ZZ1->ZZ1_ACAO) == 'E'
             aAdd(aRet, {'F3_DTCANC', StoD(StrTran(oCTE:_CTEPROC:_protCTe:_infProt:_dhRecbto:TEXT,"-","")) })    
         ElseIf AllTrim(ZZ1->ZZ1_ACAO) == 'inutilizar'   
             aAdd(aRet, {'F3_DTCANC', StoD(StrTran(oCTE:_CTEPROC:_protCTe:_infProt:_dhRecbto:TEXT,"-","")) })    
@@ -810,7 +824,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
 
         aAdd(aRet, {'FT_CLASFIS', StrZero(Val(SFT->FT_CLASFIS),3) })        
         
-        If Alltrim(ZZ1->ZZ1_ACAO) == 'cancelar'
+        If Alltrim(ZZ1->ZZ1_ACAO) == 'E'
             aAdd(aRet, {'FT_DTCANC', StoD(StrTran(oCTE:_CTEPROC:_PROTCTE:_infProt:_dhRecbto:TEXT,"-","")) })        
          ElseIf AllTrim(ZZ1->ZZ1_ACAO) == 'inutilizar'   
             aAdd(aRet, {'FT_DTCANC', StoD(StrTran(oCTE:_CTEPROC:_protCTe:_infProt:_dhRecbto:TEXT,"-","")) })    
@@ -1006,7 +1020,7 @@ Static Function ExcluiCTE()
                     MostraErro(GetSrvProfString("Startpath","") , cArqErro )
                     cMensagem := Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
                 Else
-                    oCTE := xmlParser(ZZ1->ZZ1_BODY, "_", @cErro, @cAviso)    
+                    oCTE := xmlParser(ZZ1->ZZ1_XML, "_", @cErro, @cAviso)    
                     //Cancela fiscal
                     SF2->(DbGoTo(nRecnoAux))    
                     cMensagem := CancFis()
@@ -1036,11 +1050,10 @@ Static Function VldExist()
     Local cChvZZ1   := ZZ1->ZZ1_CHAVE
     Local cBody     := ""
     Local cChave    := ""
-    //Verifica se existe cadastro de inclusao de nota 
-    //Vindo a partir da intergraaao com o NUCCI
+    
     cQryZZ1u := " SELECT * FROM "  + RetSqlName('ZZ1') + " ZZ1"
     cQryZZ1u += " WHERE ZZ1.D_E_L_E_T_ <> '*' AND ZZ1_CHAVE = '"+ZZ1->ZZ1_CHAVE+"' "
-    cQryZZ1u += " AND ZZ1_ACAO = 'inclusao' AND ZZ1_STATUS = 'P' "
+    cQryZZ1u += " AND ZZ1_ACAO = 'I' AND ZZ1_STATUS = 'P' "
     
     If Select('QRYZZ1U') > 0
         QRYZZ1U->(dbclosearea())
@@ -1128,7 +1141,7 @@ Static Function InutCTE()
             If SF2->(DbSeek(xFilial("SF2") + PADR(cYNumNFIni,Len(SF2->F2_DOC)) + PADR(cSerie,Len(SF2->F2_SERIE)) + PADR(cCliInu,Len(SF2->F2_CLIENTE)) + PADR(cLojInu,Len(SF2->F2_LOJA))))
                 ErrorBlock( {|e| cErrorBlock := e:Description + e:ErrorStack })
                 BEGIN SEQUENCE
-                    cXml := ZZ1->ZZ1_BODY
+                    cXml := ZZ1->ZZ1_XML
                     cXml := StrTran(cXml,"env:","soap:")
                     oCTE := xmlParser(cXml, "_", @cErro, @cAviso)    
                     InutFis(.T.,SF2->(Recno()))
@@ -1483,7 +1496,7 @@ User Function FUNC5CAN
     
     
     cQryAux :=  "SELECT ZZ1.R_E_C_N_O_ AS RECNO FROM "+RetSqlName("ZZ1")+ " ZZ1 "
-    cQryAux += " WHERE  ZZ1_ACAO = 'inclusao' AND ZZ1_CHAVE = '23200107189259000686570020000682791957718900' AND ZZ1.D_E_L_E_T_ <> '*'  "
+    cQryAux += " WHERE  ZZ1_ACAO = 'I' AND ZZ1_CHAVE = '23200107189259000686570020000682791957718900' AND ZZ1.D_E_L_E_T_ <> '*'  "
 
     If Select('QRYAUX') > 0
         QRYAUX->(dbclosearea())
