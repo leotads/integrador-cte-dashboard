@@ -326,8 +326,7 @@ METHOD GERANF() CLASS TNYXPEDIDOS
 			//backup do tipo para geracao do titulo
 			cMVNOTBKP := MVNOTAFIS
 
-			//verifica se foi informado
-			If !Empty(self:cTIPOTIT)			
+			//verifica se foi informado			If !Empty(self:cTIPOTIT)			
 				MVNOTAFIS := self:cTIPOTIT
 			EndIf
 
@@ -562,6 +561,8 @@ METHOD CANCELNF() CLASS TNYXPEDIDOS
       				  {"F2_TIPO"    	,cTipo		,Nil}}
 
 	MSExecAuto({|x| u_MATA520(x)},aMata520Cab)
+	//MSExecAuto({|x| MATA520(x)},aMata520Cab)
+	
 
 	If lMsErroAuto
 //		MostraErro()

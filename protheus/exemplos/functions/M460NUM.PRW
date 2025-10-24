@@ -9,13 +9,10 @@ Tem finalidade de carregar o Documento transferido do sistema Legado e a série p
 @version 1.0
 @param cNumDoc, character, Número do documento que deverá ser gerado
 /*/
-
-User Function M460NUM(cRotina)
-
-if Select("_TRB") > 0 .and. !_TRB->(EOF())
-		cSerie:= cSerie
-		cNumero:= alltrim(_TRB->F2_DOC)
-ENDif		
-	
+User Function M460NUM
+    If (IsInCallStack('PROCESSACTE') .OR. IsInCallStack('PROCESSANFSE') ) .AND. Type("cYNumNF") <> 'U'
+        cNumero	:= cYNumNF
+		//cSerie  := SC5->C5_YSERIE
+    EndIf
 Return
 
