@@ -12,7 +12,6 @@ Tem finalidade de carregar o Documento transferido do sistema Legado e a série p
 User Function M460NUM
     If (IsInCallStack('PROCESSACTE') .OR. IsInCallStack('PROCESSANFSE') ) .AND. Type("cYNumNF") <> 'U'
         cNumero	:= cYNumNF
-		//cSerie  := SC5->C5_YSERIE
     EndIf
 Return
 

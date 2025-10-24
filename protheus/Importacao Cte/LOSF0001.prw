@@ -25,7 +25,7 @@ User Function LOSF0001(nRecNoZZ1)
     
 
     If Empty(FunName())
-        PREPARE ENVIRONMENT EMPRESA '02' FILIAL '01010001'
+        PREPARE ENVIRONMENT EMPRESA '01' FILIAL '01010001'
     EndIf
     
 
@@ -622,7 +622,7 @@ Static Function ProcCte(aVends)
         SC5->(MsUnLock())
         //Posiciona o SF2 para montar os dados que serao usados para as tabelas
         // SF2->(DbGoTo(nRecNoSF2))        
-        //ProcFis(.T.,nRecNoSF2)    COMENTADO POR ANDRE TEMPORARIAMENTE ,ESTAVA APAGANDO SF2 E CRIANDO NOVAMENTE
+        ProcFis(.T.,nRecNoSF2)    
     EndIf
 
 Return cMensagem
@@ -698,8 +698,8 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
     If cTab == 'SF2'
         aAdd(aRet, {'F2_CHVNFE' , oCTE:_CTEPROC:_PROTCTE:_INFPROT:_CHCTE:TEXT})        
         aAdd(aRet, {'F2_HORA'   , SubStr(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_DHEMI:TEXT, 12,5) })
-        aAdd(aRet, {'F2_UFORIG' , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFINI:TEXT })
-        aAdd(aRet, {'F2_UFDEST' , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT })        
+        aAdd(aRet, {'F2_UFORIG' , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFINI:TEXT) })
+        aAdd(aRet, {'F2_UFDEST' , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT) })        
         aAdd(aRet, {'F2_EST'    , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT) })    
         nAliqIcms := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_pICMS:TEXT","string")
         nValIcms  := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT","string")
@@ -770,7 +770,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         aAdd(aRet, {'FT_CHVNFE' , oCTE:_CTEPROC:_PROTCTE:_INFPROT:_CHCTE:TEXT})
         aAdd(aRet, {'FT_CFOP'   , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_CFOP:TEXT})         
         aAdd(aRet, {'FT_HORNFE' , SubStr(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_DHEMI:TEXT, 12,5) })
-        aAdd(aRet, {'FT_ESTADO' , oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT })      
+        aAdd(aRet, {'FT_ESTADO' , UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT) })      
         aAdd(aRet, {'FT_CLIDEST', cCODDes })
         aAdd(aRet, {'FT_LOJDEST', cLojDes })
         aAdd(aRet, {'FT_VALCONT', Val(oCTE:_CTEPROC:_CTE:_INFCTE:_VPREST:_VTPREST:TEXT) })
@@ -856,7 +856,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         If ValType( cPais) == 'U' 
             cPais   := "105"
         EndIf
-        cEst    := oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFIni:TEXT
+        cEst    := UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFIni:TEXT)
         
         cCDRORI := GrvGrpReg(cDescri, cCodMun, cPais, cEst)
         aAdd(aRet, {'DT6_CDRORI' , cCDRORI })
@@ -866,7 +866,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         If ValType( cPais) == 'U' 
             cPais   := "105"
         EndIf
-        cEst    := oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT
+        cEst    := UPPER(oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT)
         
         cCDRDES := GrvGrpReg(cDescri, cCodMun, cPais, cEst)
         cCDRCAL := cCDRDES
@@ -1359,11 +1359,12 @@ Static Function CancFis()
     EndIf
 
     If ValType(cDtcanc) == "U"
-        cRetorno := "Data do evento nao encontrada no XML." + CRLF
-    EndIf
+        //cRetorno := "Data do evento nao encontrada no XML." + CRLF
+        dDtCanc := dDataBase 
+     Else
+        dDtCanc := StoD(StrTran(cDtcanc,"-",""))
+     EndIf
     
-    dDtCanc := StoD(StrTran(cDtcanc,"-",""))
-
     If SFT->(DbSeek(SF2->F2_FILIAL + 'S' + SF2->(F2_SERIE + F2_DOC + F2_CLIENTE + F2_LOJA)))
         RecLock('SFT', .F.)
             SFT->FT_DTCANC := dDtCanc
@@ -1388,6 +1389,7 @@ Static Function CancFis()
             DT6->(DbDelete())
         DT6->(MsUnLock())
     EndIf
+   
     SE1->(DbSetOrder(2))
     If SE1->(DbSeek(xFilial("SE1") + SF2->(F2_CLIENTE + F2_LOJA + F2_SERIE + F2_DOC ) ))
         lMsErroAuto := .F.
@@ -1411,6 +1413,13 @@ Static Function CancFis()
         cRetorno += "Tatulo nao encontrado na filial: " + xFilial('SE1')
     EndIf
 
+    //Adicionado por Andre Vicente 24/10/2025
+    If !lMsErroAuto
+         RecLock('ZZ1', .F.)
+            ZZ1->ZZ1_STATUS := 'P'
+            ZZ1->ZZ1_STAFIS := 'A'
+            ZZ1->(MsUnLock())
+    Endif
 
     SF3->(RestArea(aAreaSF3))
     SFT->(RestArea(aAreaSFT))
