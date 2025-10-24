@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router } from '@angular/router';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 
 import {
@@ -9,34 +9,47 @@ import {
   PoThemeModule,
   PoToolbarModule,
 } from '@po-ui/ng-components';
+import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { MonitorComponent } from './pages/monitor/monitor.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule,
-    RouterOutlet,
     PoToolbarModule,
     PoMenuModule,
-    PoThemeModule
+    PoThemeModule,
+    DashboardComponent,
+    MonitorComponent
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent {
+
+  page: string = "Dashboard";
+  status: string = "";
+
   readonly menus: Array<PoMenuItem> = [
-    { label: 'Dashboard', link: 'dashboard', icon: 'an an-chart-line', shortLabel: 'Dashboard' },
-    { label: 'Monitor', link: 'monitor', icon: 'an an-monitor', shortLabel: 'Monitor' },
+    { label: 'Dashboard', action: () => this.onAlterarPage("Dashboard"), icon: 'an an-chart-line', shortLabel: 'Dashboard' },
+    { label: 'Monitor', action: () => this.onAlterarPage("Monitor"), icon: 'an an-monitor', shortLabel: 'Monitor' },
   ];
 
   constructor(
     private proJsToAdvplService: ProJsToAdvplService,
-    private proAppConfigService: ProAppConfigService,
-    private router: Router
+    private proAppConfigService: ProAppConfigService
   ) {
     if (!this.proAppConfigService.insideProtheus()) {
       this.proAppConfigService.loadAppConfig();
     }
+  }
+
+  onAlterarStatus(newStatus: string) {
+    this.status = newStatus;
+  }
+  onAlterarPage(newPage: string) {
+    this.page = newPage;
   }
 
 }

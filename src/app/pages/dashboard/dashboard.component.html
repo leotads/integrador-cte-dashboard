@@ -3,13 +3,13 @@
     <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2">
       <div class="po-text-center"><img src="assets/img/grupolos.png" alt="Logo da Empresa" class="logo"></div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('total')" p-title="TOTAL DE DOCUMENTOS">
+    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('')" p-title="TOTAL DE DOCUMENTOS">
       <div class="po-font-display po-text-center">{{numberOfDocuments || 0}}</div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('integracao')" p-title="INTEGRADOS">
+    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('I')" p-title="INTEGRADOS">
       <div class="po-font-display po-text-center">{{integratedQuantity || 0}}</div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('erros')" p-title="ERROS">
+    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('E')" p-title="ERROS">
       <div class="po-font-display po-text-center">{{numberOfErrors || 0}}</div>
     </po-widget>
   </div>

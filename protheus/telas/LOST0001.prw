@@ -58,6 +58,8 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
       oWebChannel:AdvPLToJS('excluiDocument', ExcluirDoc(cContent))
     Case cType == 'downloadDocument'
       oWebChannel:AdvPLToJS('downloadDocument', encodeutf8(baixaDocto(cContent)))
+    Case cType == 'reprocessDocument'
+      oWebChannel:AdvPLToJS('reprocessDocument', encodeutf8(reproDocto(cContent)))
   End
 
 Return .T.
@@ -771,3 +773,29 @@ Static Function baixaDocto(cContent)
   endif
 
 Return oJson:toJson()
+
+/*/{Protheus.doc} reproDocto
+  (long_description)
+  @type  Static Function
+  @author user
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  @example
+  (examples)
+  @see (links_or_references)
+/*/
+Static Function reproDocto(cContent)
+
+  local jContent := JsonObject():new()
+  local cRetorno := ""
+
+  jContent:fromJson(cContent)
+
+  ZZ1->( dbSetOrder( 1 ) )
+  ZZ1->( dbGoTo( jContent["recno"] ) )
+
+  cRetorno := LOSF001B("P")
+
+Return cRetorno

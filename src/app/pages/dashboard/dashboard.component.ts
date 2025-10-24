@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { format, formatDate } from 'date-fns';
 
@@ -16,7 +16,6 @@ import {
   PoTab
 } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
-import { Router } from '@angular/router';
 import { ProtheusService } from '../../services/protheus.service';
 
 @Component({
@@ -35,6 +34,10 @@ import { ProtheusService } from '../../services/protheus.service';
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent {
+
+  @Output() alterarStatus = new EventEmitter<string>();
+  @Output() alterarPage = new EventEmitter<string>();
+
   isLoading: boolean = true;
   numberOfDocuments: string = '0';
   integratedQuantity: string = '0';
@@ -58,21 +61,11 @@ export class DashboardComponent {
   chartDocumentsPerYearsCategories: Array<string> = [];
   chartDocumentsPerYearsSeries: Array<PoChartSerie> = [];
   
-  /*
-  
-  optionsColumnDocumentsPerYear: PoChartOptions = {};
-  categoriesColumnDocumentsPerYear: Array<string> = [];
-  DocumentsPerYear: Array<PoChartSerie> = [];
-  optionsColumnAllDocuments: PoChartOptions = {};
-  categoriesColumnAllDocuments: Array<string> = [];
-  allDocuments: Array<PoChartSerie> = [];
-*/
   constructor(
     private proJsToAdvplService: ProJsToAdvplService,
     private protheusService: ProtheusService,
     public poNotification: PoNotificationService,
-    private proAppConfigService: ProAppConfigService,
-    private router: Router
+    private proAppConfigService: ProAppConfigService
   ) {
     if (!this.proAppConfigService.insideProtheus()) {
       this.proAppConfigService.loadAppConfig();
@@ -82,6 +75,8 @@ export class DashboardComponent {
   ngOnInit(): void {
     this.onLoading();
   }
+
+  
 
   async onLoading() {
     this.isLoading = false;
@@ -243,11 +238,18 @@ export class DashboardComponent {
   }
 
   openMonitor(status: string) {
-    this.router.navigate(["/monitor"], {
-      queryParams: {
-        status: status
-      }
-    })
+
+    this.enviarStatus(status);
+    this.enviarPage();
+
+  }
+
+  enviarStatus(status: string) {
+    this.alterarStatus.emit(status)
+  }
+
+  enviarPage() {
+    this.alterarPage.emit("Monitor")
   }
 
   changeDate() {
@@ -256,5 +258,7 @@ export class DashboardComponent {
     this.chartDocumentsPerYear()
     this.chartDocumentsPerYears()
   }
+
+  
 
 } 

@@ -1,8 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { PoDialogModule, PoDialogService, PoNotificationService, PoPageModule, PoTableAction, PoTableColumn, PoTableColumnSort, PoTableModule } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { ProtheusService } from '../../services/protheus.service';
-import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-monitor',
@@ -15,6 +14,8 @@ import { ActivatedRoute, Router } from '@angular/router';
   styleUrls: ['./monitor.component.css']
 })
 export class MonitorComponent {
+
+  @Input() status!: string;
 
   columns: Array<PoTableColumn> = [
       {
@@ -50,7 +51,7 @@ export class MonitorComponent {
   showMoreDisabled: boolean = false;
   isLoading: boolean = false;
   pagination: object = {page: 0, pageSize: 5}
-  status: string = "";
+  //status: string = "";
   
   actions: Array<PoTableAction> = [
     {
@@ -60,7 +61,7 @@ export class MonitorComponent {
       //disabled: this.validateDiscount.bind(this)
     },
     { 
-      action: this.reprocess.bind(this), 
+      action: this.confirmReprocess.bind(this), 
       icon: 'an an-arrows-counter-clockwise', label: 'Reprocessar' 
     },
     { 
@@ -74,10 +75,8 @@ export class MonitorComponent {
       private proJsToAdvplService: ProJsToAdvplService,
       private protheusService: ProtheusService,
       private proAppConfigService: ProAppConfigService,
-      private router: Router,
       public poNotification: PoNotificationService,
-      public poDialog: PoDialogService,
-      private activatedRoute: ActivatedRoute
+      public poDialog: PoDialogService
     ) {
       if (!this.proAppConfigService.insideProtheus()) {
         this.proAppConfigService.loadAppConfig();
@@ -86,7 +85,7 @@ export class MonitorComponent {
   
 
   ngOnInit(): void {
-    
+/*    
     this.activatedRoute.queryParams.subscribe( params => {
       if (params['status'] == "integracao") {
         this.status = "I";
@@ -94,7 +93,7 @@ export class MonitorComponent {
         this.status = "E"
       }
     });
-
+*/
     this.onLoading();
 
   }
@@ -118,6 +117,7 @@ export class MonitorComponent {
       complete: () => this.isLoading = true
     });
   }
+
   excluir(item: any) {
     this.isLoading = false;
 
@@ -149,8 +149,39 @@ export class MonitorComponent {
   }
 
 
-  reprocess(item: any) {
+  confirmReprocess(item: any) {
 
+    this.poDialog.confirm({
+      literals: {cancel: "Cancelar", confirm: "Confirmar"},
+      title: "Confirmação de reprocessamento",
+      message: "Confirma o reprocessamento do registro?",
+      confirm: () => this.reprocess(item),
+    });
+
+    
+
+  }
+
+  reprocess(item: any) {
+    this.isLoading = false;
+
+    this.protheusService.getProtheus(
+      'reprocessDocument',
+      JSON.stringify(item)
+    ).subscribe({
+      next: (result) => {
+
+        this.onLoading();
+
+        if (!result) {
+          this.poNotification.success("Processamento realizado com sucesso!");
+        } else {
+          this.poNotification.error(result);
+        }
+      },
+      error: (error) => this.poNotification.error("Não foi possível reprocessar o registro!"),
+      complete: () => this.isLoading = true
+    });
   }
 
   openXML(item: any) {

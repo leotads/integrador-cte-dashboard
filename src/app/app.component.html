@@ -7,5 +7,10 @@
     [p-automatic-toggle]="true"
   ></po-menu>
 
-  <router-outlet></router-outlet>
+  <div *ngIf="page==='Dashboard'">
+    <app-dashboard (alterarStatus)="onAlterarStatus($event)" (alterarPage)="onAlterarPage($event)"></app-dashboard>
+  </div>
+  <div *ngIf="page==='Monitor'">
+    <app-monitor [status]="status"></app-monitor>
+  </div>
 </div>
