@@ -15,8 +15,8 @@ WSMETHOD POST WSSERVICE LOSW0001
   ::SetContentType("application/json")   	
   nOpc := 2
 
-  If len(::aURLParms) < 2
-    oResponse["message"]    := 'acao e/ou chave nao enviada'
+  If len(::aURLParms) < 3
+    oResponse["message"]    := 'tipo e/ou acao e/ou chave nao enviada'
     oResponse["type"]       := "error"
     oResponse["status"]     := 400    
 
@@ -25,10 +25,11 @@ WSMETHOD POST WSSERVICE LOSW0001
     return .F.    
   endif
 
-  cTipo   := ::aURLParms[1]
-  cChave  := ::aURLParms[2]
+  cTipo_   := ::aURLParms[1]
+  cAcao_   := ::aURLParms[2]
+  cChave_  := ::aURLParms[3]
 
-  oResponse := postCte(cXML, cTipo, cChave)
+  oResponse := postCte(cXML, cTipo_, cAcao_, cChave_)
 
   self:SetStatus(oResponse['status'])
   self:SetResponse(EncodeUtf8(oResponse:toJson()))
@@ -47,12 +48,13 @@ return lRet
   (examples)
   @see (links_or_references)
 /*/
-Static Function postCte(cXML, cTipo, cChave)
+Static Function postCte(cXML, cTipo_, cAcao_, cChave_)
   Local oResponse := JsonObject():new()
   Local cAcao := ""
+  Local cTipo := ""
 
-  if empty(cTipo)
-    oResponse["message"] := "É necessário enviar a acao!"
+  if empty(cTipo_)
+    oResponse["message"] := "É necessário enviar o tipo do XML!"
     oResponse["type"] := "error"
     oResponse["status"] := 400
 
@@ -61,14 +63,36 @@ Static Function postCte(cXML, cTipo, cChave)
   endif
 
   Do Case
-  Case cTipo = "inclusao"
+  Case cTipo_ == "cte"
+    cTipo := "1"
+  Case cTipo_ == "nfse"
+    cTipo := "2"
+  Otherwise
+    oResponse["message"] := "O tipo (" + alltrim(cTipo_) + ") não está configurada!"
+    oResponse["type"] := "error"
+    oResponse["status"] := 400
+
+    return oResponse
+  EndCase
+
+  if empty(cAcao_)
+    oResponse["message"] := "É necessário enviar a ação a ser executada!"
+    oResponse["type"] := "error"
+    oResponse["status"] := 400
+
+    return oResponse
+    
+  endif
+
+  Do Case
+  Case cAcao_ == "inclusao"
     cAcao := "I"
-  Case cTipo = "cartacorrecao"
+  Case cAcao_ == "cartacorrecao"
     cAcao := "C"
-  Case cTipo = "exclusao"
+  Case cAcao_ == "exclusao"
     cAcao := "E"
   Otherwise
-    oResponse["message"] := "A ação (" + alltrim(cTipo) + ") não está configurada!"
+    oResponse["message"] := "A ação (" + alltrim(cAcao_) + ") não está configurada!"
     oResponse["type"] := "error"
     oResponse["status"] := 400
 
@@ -76,7 +100,7 @@ Static Function postCte(cXML, cTipo, cChave)
     
   EndCase
 
-  if empty(cChave)
+  if empty(cChave_)
     oResponse["message"] := "É necessário enviar a chave!"
     oResponse["type"] := "error"
     oResponse["status"] := 400
@@ -94,8 +118,8 @@ Static Function postCte(cXML, cTipo, cChave)
     
   endif
 
-  if existReg(cChave, cTipo)
-    oResponse["message"] := "Já existe um registro para a chave (" + alltrim(cChave) + ") para essa ação (" + alltrim(cTipo) + ")!"
+  if existReg(cChave_, cTipo, cAcao)
+    oResponse["message"] := "Já existe um registro para a chave (" + alltrim(cChave_) + ") para essa ação (" + alltrim(cAcao_) + ")!"
     oResponse["type"] := "error"
     oResponse["status"] := 400
     
@@ -112,8 +136,9 @@ Static Function postCte(cXML, cTipo, cChave)
     ZZ1->ZZ1_XML   := cXml
     ZZ1->ZZ1_DATA   := dDataBase
     ZZ1->ZZ1_HORA   := Time()
-    ZZ1->ZZ1_CHAVE  := cChave
+    ZZ1->ZZ1_CHAVE  := cChave_
     ZZ1->ZZ1_ACAO   := cAcao
+    ZZ1->ZZ1_TIPO   := cTipo
     ZZ1->ZZ1_STATUS := 'A'
   ZZ1->(MsUnLock())
 
@@ -217,7 +242,7 @@ Return oResponse
   (examples)
   @see (links_or_references)
 /*/
-Static Function existReg(cChave, cTipo)
+Static Function existReg(cChave, cTipo, cAcao)
   local lRet := .F.
 
   BeginSql alias 'QRY'
@@ -225,7 +250,8 @@ Static Function existReg(cChave, cTipo)
            ZZ1.*
       FROM %table:ZZ1% ZZ1 
      WHERE ZZ1.%notdel% AND 
-           RTRIM(ZZ1_ACAO) = %exp:cTipo% AND
+           RTRIM(ZZ1_ACAO) = %exp:cAcao% AND
+           RTRIM(ZZ1_TIPO) = %exp:cTipo% AND
            RTRIM(ZZ1_CHAVE) = %exp:cChave%
   Endsql
 
