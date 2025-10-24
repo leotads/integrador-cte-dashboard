@@ -3,13 +3,13 @@
     <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2">
       <div class="po-text-center"><img src="assets/img/grupolos.png" alt="Logo da Empresa" class="logo"></div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" onclick="alert('total')" p-title="TOTAL DE DOCUMENTOS">
+    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('total')" p-title="TOTAL DE DOCUMENTOS">
       <div class="po-font-display po-text-center">{{numberOfDocuments || 0}}</div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" onclick="alert('integraçaõ')" p-title="INTEGRADOS">
+    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('integracao')" p-title="INTEGRADOS">
       <div class="po-font-display po-text-center">{{integratedQuantity || 0}}</div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" onclick="alert('erros')" p-title="ERROS">
+    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('erros')" p-title="ERROS">
       <div class="po-font-display po-text-center">{{numberOfErrors || 0}}</div>
     </po-widget>
   </div>
@@ -28,9 +28,9 @@
     </div>
   </div>
   <po-divider></po-divider>
-  <div class="po-row po-mt-0" style="justify-content: space-between; align-items: center;">
+  <div class="po-row po-mt-0 po-mb-3" style="justify-content: space-between; align-items: center;">
     <po-tabs>
-      <po-tab [p-active]="true" p-label="Dia">
+      <po-tab [p-active]="true" p-label="Dia" (p-click)="chartDocumentsPerDay()">
         <div class="po-row">
             <po-chart
               class="po-md-12 "
@@ -42,35 +42,35 @@
             </po-chart>
         </div>
       </po-tab>
-      <po-tab p-label="Mês">
+      <po-tab  p-label="Mês" (p-click)="chartDocumentsPerMonth()">
         <div class="po-row">
           <po-chart
             class="po-md-12"
             p-title="Requisições por mês"
-            [p-options]="optionsColumnDocumentsPerMonth"
-            [p-categories]="categoriesColumnDocumentsPerMonth"
-            [p-series]="DocumentsPerMonth"
+            [p-options]="chartDocumentsPerMonthOptions"
+            [p-categories]="chartDocumentsPerMonthCategories"
+            [p-series]="chartDocumentsPerMonthSeries"
           >
           </po-chart>
         </div>
       </po-tab>
-      <po-tab p-label="Ano">
+      <po-tab p-label="Ano" (p-click)="chartDocumentsPerYear()">
         <po-chart
           class="po-md-12"
           p-title="Requisições por ano"
-          [p-options]="optionsColumnDocumentsPerYear"
-          [p-categories]="categoriesColumnDocumentsPerYear"
-          [p-series]="DocumentsPerYear"
+          [p-options]="chartDocumentsPerYearOptions"
+          [p-categories]="chartDocumentsPerYearCategories"
+          [p-series]="chartDocumentsPerYearSeries"
         >
         </po-chart>
       </po-tab>
-      <po-tab p-label="Todos">
+      <po-tab p-label="Todos" (p-click)="chartDocumentsPerYears()">
         <po-chart
           class="po-md-12"
           p-title="Quantidade de requisições"
-          [p-options]="optionsColumnAllDocuments"
-          [p-categories]="categoriesColumnAllDocuments"
-          [p-series]="allDocuments"
+          [p-options]="chartDocumentsPerYearsOptions"
+          [p-categories]="chartDocumentsPerYearsCategories"
+          [p-series]="chartDocumentsPerYearsSeries"
         >
         </po-chart>
       </po-tab>

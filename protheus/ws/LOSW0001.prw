@@ -30,7 +30,7 @@ WSMETHOD POST WSSERVICE LOSW0001
 
   oResponse := postCte(cXML, cTipo, cChave)
 
-  self:SetStatus(oResponse:status)
+  self:SetStatus(oResponse['status'])
   self:SetResponse(EncodeUtf8(oResponse:toJson()))
 
 return lRet
@@ -49,6 +49,7 @@ return lRet
 /*/
 Static Function postCte(cXML, cTipo, cChave)
   Local oResponse := JsonObject():new()
+  Local cAcao := ""
 
   if empty(cTipo)
     oResponse["message"] := "É necessário enviar a acao!"
@@ -59,6 +60,22 @@ Static Function postCte(cXML, cTipo, cChave)
     
   endif
 
+  Do Case
+  Case cTipo = "inclusao"
+    cAcao := "I"
+  Case cTipo = "cartacorrecao"
+    cAcao := "C"
+  Case cTipo = "exclusao"
+    cAcao := "E"
+  Otherwise
+    oResponse["message"] := "A ação (" + alltrim(cTipo) + ") não está configurada!"
+    oResponse["type"] := "error"
+    oResponse["status"] := 400
+
+    return oResponse
+    
+  EndCase
+
   if empty(cChave)
     oResponse["message"] := "É necessário enviar a chave!"
     oResponse["type"] := "error"
@@ -68,6 +85,43 @@ Static Function postCte(cXML, cTipo, cChave)
     
   endif
 
+  if empty(cXML)
+    oResponse["message"] := "É necessário enviar o XML no Body da requisição!"
+    oResponse["type"] := "error"
+    oResponse["status"] := 400
+    
+    return oResponse
+    
+  endif
+
+  if existReg(cChave, cTipo)
+    oResponse["message"] := "Já existe um registro para a chave (" + alltrim(cChave) + ") para essa ação (" + alltrim(cTipo) + ")!"
+    oResponse["type"] := "error"
+    oResponse["status"] := 400
+    
+    return oResponse
+    
+  endif
+
+  cXml := strtran(strtran(cXml, Chr(9), ''), Chr(10), '')
+  cXml := fRemoveCarc(cXml)
+
+  ZZ1->( dbSetOrder(1) )
+  RecLock('ZZ1', .T.)
+    ZZ1->ZZ1_FILIAL := xFilial("ZZ1")
+    ZZ1->ZZ1_XML   := cXml
+    ZZ1->ZZ1_DATA   := dDataBase
+    ZZ1->ZZ1_HORA   := Time()
+    ZZ1->ZZ1_CHAVE  := cChave
+    ZZ1->ZZ1_ACAO   := cAcao
+    ZZ1->ZZ1_STATUS := 'A'
+  ZZ1->(MsUnLock())
+
+  oResponse["message"] := "Registro incluído na tabela de integração para processamento!"
+  oResponse["type"] := "success"
+  oResponse["status"] := 201
+
+/*
   Do Case
     Case alltrim(cTipo) $ 'inclusao,cartacorrecao'
       if existReg(cChave, cTipo)
@@ -148,7 +202,7 @@ Static Function postCte(cXML, cTipo, cChave)
       
       return oResponse
   EndCase
-  
+  */
 Return oResponse
 
 /*/{Protheus.doc} existReg
@@ -271,7 +325,11 @@ Static Function popula(cXml, cChave, cTipo)
         EndIf
       Next
 
-      cCNPJ := oCTE:_CTEPROC:_CTE:_INFCTE:_EMIT:_CNPJ:TEXT
+      cYNumNF := strTran( strTran( oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_NCT:TEXT, Chr(9), '' ), Chr(10), '' ) 
+      cYNumSer := strTran( strTran( oCTE:_CTEPROC:_CTE:_INFCTE:_IDE:_SERIE:TEXT, Chr(9), '' ), Chr(10), '' ) 
+
+      cCNPJ := strtran(strtran(oCTE:_CTEPROC:_CTE:_INFCTE:_EMIT:_CNPJ:TEXT, Chr(9), ''), Chr(10), '')
+
       dEmissao    := StoD(StrTran(Left(dEmissao,10),'-',''))
       
       If !setEmpresa(cCNPJ)
@@ -289,16 +347,16 @@ Static Function popula(cXml, cChave, cTipo)
 
       cCNPJCli :=  getTomador(cTomador, oCTE)
       //Valida o CNPJ tomador
-      If Empty(cCNPJCli)
-        Return 'Erro ao tentar obter o CNPJ('+cCNPJCli+') do tomador.'
-      EndIf
+//      If Empty(cCNPJCli)
+//        Return 'Erro ao tentar obter o CNPJ('+cCNPJCli+') do tomador.'
+//      EndIf
       
+      cCodCli  := ''
+      cLojaCli := ''
       SA1->(dbSetOrder(3))
       If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJCli,TamSx3("A1_CGC")[1]) ))
         cCodCli  := SA1->A1_COD
         cLojaCli := SA1->A1_LOJA
-      Else
-        Return 'Tomador de CNPJ('+cCNPJCli+') não encontrado.'
       EndIf
 
       RecLock('ZZ1', .T.)
@@ -308,12 +366,12 @@ Static Function popula(cXml, cChave, cTipo)
         ZZ1->ZZ1_SERCTE := cYNumSer
         ZZ1->ZZ1_CLIENT := cCodCli
         ZZ1->ZZ1_LOJA   := cLojaCli
-        ZZ1->ZZ1_CNPJ   := cCNPJCli
-        ZZ1->ZZ1_BODY   := cXml
+        ZZ1->ZZ1_CGC   := cCNPJCli
+        ZZ1->ZZ1_XML   := cXml
         ZZ1->ZZ1_DATA   := dDataBase
         ZZ1->ZZ1_HORA   := Time()
         ZZ1->ZZ1_CHAVE  := cChave
-        ZZ1->ZZ1_TIPO   := cTipo
+        ZZ1->ZZ1_ACAO   := cTipo
         ZZ1->ZZ1_STATUS := 'A'
       ZZ1->(MsUnLock())
       
@@ -364,8 +422,8 @@ Static Function popula(cXml, cChave, cTipo)
         ZZ1->ZZ1_SERCTE := QRYZZ1->ZZ1_SERCTE
         ZZ1->ZZ1_CLIENT := QRYZZ1->ZZ1_CLIENT
         ZZ1->ZZ1_LOJA   := QRYZZ1->ZZ1_LOJA
-        ZZ1->ZZ1_CNPJ   := Posicione("SA1",1,xFilial("SA1") + QRYZZ1->(ZZ1_CLIENT+ZZ1_LOJA),"A1_CGC")
-        ZZ1->ZZ1_BODY   := cXml
+        ZZ1->ZZ1_CGC   := Posicione("SA1",1,xFilial("SA1") + QRYZZ1->(ZZ1_CLIENT+ZZ1_LOJA),"A1_CGC")
+        ZZ1->ZZ1_XML   := cXml
         ZZ1->ZZ1_DATA   := dDataBase
         ZZ1->ZZ1_HORA   := Time()
         ZZ1->ZZ1_CHAVE  := cChave
@@ -407,7 +465,7 @@ Static Function popula(cXml, cChave, cTipo)
             ZZ1->ZZ1_FILCTE := cFilant
             ZZ1->ZZ1_NUMCTE := PADL(Alltrim(cYNumNF),LEN(ZZ1->ZZ1_NUMCTE),"0")
             ZZ1->ZZ1_SERCTE := cSerie
-            ZZ1->ZZ1_BODY       := cXml
+            ZZ1->ZZ1_XML       := cXml
             ZZ1->ZZ1_DATA       := dDataBase
             ZZ1->ZZ1_HORA       := Time()
             ZZ1->ZZ1_CHAVE      := cChave
@@ -425,7 +483,7 @@ Static Function popula(cXml, cChave, cTipo)
         _cFilial    := ZZ1->ZZ1_FILCTE
         
         RecLock('ZZ1', .T.)                 
-          ZZ1->ZZ1_BODY       := cXml
+          ZZ1->ZZ1_XML       := cXml
           ZZ1->ZZ1_DATA       := dDataBase
           ZZ1->ZZ1_HORA       := Time()
           ZZ1->ZZ1_CHAVE      := cChave
@@ -469,7 +527,11 @@ Static Function setEmpresa(cCNPJ)
   SM0->(DbGoTop())
 
   While SM0->(!Eof())
-    If SM0->M0_CGC == cCNPJ
+    conout('cCNPJ')
+    conout("'" + cCNPJ + "'")
+    conout('m0_cgc')
+    conout("'" + SM0->M0_CGC + "'")
+    If alltrim(SM0->M0_CGC) == alltrim(cCNPJ)
       cFilAnt := SM0->M0_CODFIL
       lRet    := .T.
       Exit
@@ -521,3 +583,43 @@ static function getTomador(cTomador, oCTE)
   EndIf
 
 Return cRet
+
+/*/{Protheus.doc} fRemoveCarc
+    Remover caracteres especiais 
+    @type  Static Function
+    @author user
+    @since 22/03/2024
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function fRemoveCarc(cString_)
+    cString_ := FwCutOff(cString_, .T.)
+    cString_ := strtran(cString_,"ã","a")
+	cString_ := strtran(cString_,"á","a")
+	cString_ := strtran(cString_,"à","a")
+	cString_ := strtran(cString_,"ä","a")
+    cString_ := strtran(cString_,"º","")
+    cString_ := strtran(cString_,"%","")
+    cString_ := strtran(cString_,"*","")     
+    cString_ := strtran(cString_,"&","")
+    cString_ := strtran(cString_,"$","")
+    cString_ := strtran(cString_,"#","")
+    cString_ := strtran(cString_,"§","") 
+    cString_ := strtran(cString_,",","")
+    cString_ := StrTran(cString_, "'", "")
+    cString_ := StrTran(cString_, "#", "")
+    cString_ := StrTran(cString_, "%", "")
+    cString_ := StrTran(cString_, "*", "")
+    cString_ := StrTran(cString_, "&", "E")
+    cString_ := StrTran(cString_, "!", "")
+    cString_ := StrTran(cString_, "@", "")
+    cString_ := StrTran(cString_, "$", "")
+    cString_ := StrTran(cString_, "?", "")
+    cString_ := StrTran(cString_, '°', '')
+    cString_ := StrTran(cString_, 'ª', '')
+    cString_ := Alltrim(Lower(cString_))
+Return cString_

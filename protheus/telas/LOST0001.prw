@@ -45,15 +45,19 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
     Case cType == 'getQuantityErrors'
       oWebChannel:AdvPLToJS('getQuantityErrors', cValToChar(qtdAllErrs()))
     Case cType == 'chartDocumentsPerDay'
-      oWebChannel:AdvPLToJS('chartDocumentsPerDay', cValToChar(reqPerDay(cContent)))
+      oWebChannel:AdvPLToJS('chartDocumentsPerDay', reqPerDay(cContent))
     Case cType == 'chartDocumentsPerMonth'
-      oWebChannel:AdvPLToJS('chartDocumentsPerMonth', cValToChar(rqPerMonth(cContent)))
+      oWebChannel:AdvPLToJS('chartDocumentsPerMonth', rqPerMonth(cContent))
     Case cType == 'chartDocumentsPerYear'
-      oWebChannel:AdvPLToJS('chartDocumentsPerYear', cValToChar(rqPerYear(cContent)))
+      oWebChannel:AdvPLToJS('chartDocumentsPerYear', rqPerYear(cContent))
     Case cType == 'chartDocumentsPerYears'
-      oWebChannel:AdvPLToJS('chartDocumentsPerYears', cValToChar(rqPerYears(cContent)))
+      oWebChannel:AdvPLToJS('chartDocumentsPerYears', rqPerYears(cContent))
     Case cType == 'getDocuments'
-      oWebChannel:AdvPLToJS('getDocuments', cValToChar(getAllDocs(cContent)))
+      oWebChannel:AdvPLToJS('getDocuments', getAllDocs(cContent))
+    Case cType == 'excluiDocument'
+      oWebChannel:AdvPLToJS('excluiDocument', ExcluirDoc(cContent))
+    Case cType == 'downloadDocument'
+      oWebChannel:AdvPLToJS('downloadDocument', encodeutf8(baixaDocto(cContent)))
   End
 
 Return .T.
@@ -70,16 +74,21 @@ Return .T.
   (examples)
   @see (links_or_references)
 /*/
-Static Function qtdAllDocs(param_name)
+Static Function qtdAllDocs()
 
   Local nQuantidade := 0
-  Local cAlias_ := "ZZ1"
 
-  ( cAlias_ )->( dbsetorder( 1 ) )
-  ( cAlias_ )->( dbGoTop( ) )
-  count to nQuantidade
+  BeginSQL alias 'ZZ1TOT'
+    SELECT COUNT(*) quantidade
+      FROM %table:ZZ1% zz1 
+     WHERE zz1.%notdel%
+  EndSql
+  
+  if ZZ1TOT->( !eof() )
+    nQuantidade := ZZ1TOT->quantidade
+  endif
 
-  ( cAlias_ )->( dbCloseArea() )
+  ZZ1TOT->( dbCloseArea() )
 
 Return nQuantidade
 
@@ -220,7 +229,7 @@ Static Function reqPerDay(cContent)
     aAdd(aDados, jAbertos)
 
   jConcluidos := JsonObject():new()
-    jConcluidos["label"] := encodeutf8("ConcluÃ­dos")
+    jConcluidos["label"] := "Concluidos"
     jConcluidos["data"] := aConcluidos
     jConcluidos["color"] := "blue"
     aAdd(aDados, jConcluidos)
@@ -284,15 +293,15 @@ Static Function rqPerMonth(cContent)
     aAdd( aErros, 0 )    
   next i
 
-  cQuery := " SELECT substring(ZZ1_DATA, 5, 2) dia, "
+  cQuery := " SELECT substring(ZZ1_DATA, 7, 2) dia, "
   cQuery +=        " ZZ1_STATUS, "
   cQuery +=        " count(*) quantidade "
   cQuery +=   " FROM " + retSqlName("ZZ1") + " zz1 "
   cQuery +=  " WHERE substring(ZZ1_DATA, 1, 6) = '" + aDate[2] + aDate[1] + "'  "
   cQuery += " AND D_E_L_E_T_ = ' ' "
-  cQuery +=  " GROUP BY substring(ZZ1_DATA, 5, 2), "
+  cQuery +=  " GROUP BY substring(ZZ1_DATA, 7, 2), "
   cQuery +=   " ZZ1_STATUS "
-  cQuery += " ORDER BY substring(ZZ1_DATA, 5, 2) "
+  cQuery += " ORDER BY substring(ZZ1_DATA, 7, 2) "
 
   cQuery := ChangeQuery( cQuery )
   tcQuery cQuery new alias 'QRYPerMonth'
@@ -325,7 +334,7 @@ Static Function rqPerMonth(cContent)
     aAdd(aDados, jAbertos)
 
   jConcluidos := JsonObject():new()
-    jConcluidos["label"] := encodeutf8("ConcluÃ­dos")
+    jConcluidos["label"] := "Concluidos"
     jConcluidos["data"] := aConcluidos
     jConcluidos["color"] := "blue"
     aAdd(aDados, jConcluidos)
@@ -391,6 +400,7 @@ Static Function rqPerYear(cContent)
 
   for i := 1 to 12
     aAdd( aMeses, strzero(i, 2) )    
+    aAdd( aAbertos, 0 )    
     aAdd( aConcluidos, 0 )    
     aAdd( aErros, 0 )    
   next i
@@ -434,7 +444,7 @@ Static Function rqPerYear(cContent)
     aAdd(aDados, jAbertos)
 
   jConcluidos := JsonObject():new()
-    jConcluidos["label"] := encodeutf8("ConcluÃ­dos")
+    jConcluidos["label"] := "Concluidos"
     jConcluidos["data"] := aConcluidos
     jConcluidos["color"] := "blue"
     aAdd(aDados, jConcluidos)
@@ -548,7 +558,7 @@ Static Function rqPerYears(cContent)
     aAdd(aDados, jAbertos)
   
   jConcluidos := JsonObject():new()
-    jConcluidos["label"] := encodeutf8("ConcluÃ­dos")
+    jConcluidos["label"] := "Concluidos"
     jConcluidos["data"] := aConcluidos
     jConcluidos["color"] := "blue"
     aAdd(aDados, jConcluidos)
@@ -599,49 +609,165 @@ Return jResponse:toJson()
   @see (links_or_references)
 /*/
 Static Function getAllDocs(cContent)
-  aDados := {}
-  oDados := JsonObject():new()
+  Local cAlias_ := "QRY"
+  Local aDados := {}
+  Local oDados := JsonObject():new()
+  local jContent := JsonObject():new()
+  Local nCount := 0
+  Local nStart := 1
+  Local nReg := 0
+  Local cWhere := ""
 
-  BeginSql alias 'QRY'
-    SELECT *
+
+  jContent:fromJson(cContent)
+
+  if jContent:hasProperty("status")
+    if !empty(jContent["status"])
+      cWhere += " AND ZZ1_STATUS = '" + upper(alltrim(jcontent["status"])) +  "' "
+    endif
+  endif
+
+  if jContent:hasProperty("filtro")
+    if !empty(jContent["filtro"])
+      cWhere += " AND (ZZ1_FILIAL like '%" + alltrim(jContent["filtro"]) + "%' or ZZ1_NUMCTE like '%" + alltrim(jContent["filtro"]) + "%' or ZZ1_SERCTE like '%" + alltrim(jContent["filtro"]) + "%' or ZZ1_CHAVE like '%" + alltrim(jContent["filtro"]) + "%' ) "
+    endif
+  endif
+
+  cWhere := "% " + cWhere + " %"
+
+  BeginSql alias cAlias_
+    SELECT zz1.R_E_C_N_O_ recno, zz1.*
       FROM %table:ZZ1% zz1 
      WHERE zz1.D_E_L_E_T_ = ' '
+     %exp:cWhere%
   EndSql
 
-  while QRY->( !EOF( ) )
+  if ( cAlias_ )->( !eof() )
+    //Identifica a quantidade de registro
+    count to nRecord 
 
-    oJson := JsonObject():new()
-    oJson['status'] := QRY->ZZ1_STATUS
-    oJson['acao'] := alltrim(QRY->ZZ1_ACAO)
-    oJson['filial'] := alltrim(QRY->ZZ1_FILCTE)
-    oJson['data'] := stod(QRY->ZZ1_DATA)
-    oJson['hora'] := stod(QRY->ZZ1_HORA)
-    oJson['chave'] := alltrim(QRY->ZZ1_CHAVE)
-    oJson['documento'] := alltrim(QRY->ZZ1_NUMCTE)
-    oJson['serie'] := alltrim(QRY->ZZ1_SERCTE)
-    oJson['details'] := {}
+    if jContent["page"] > 1 
+      nStart := ( ( jContent["page"] - 1 ) * jContent["pageSize"] ) + 1
+      nReg := nRecord - nStart + 1
+    else 
+      nReg := nRecord
+    endif
 
-  aadd(aDados, oJson)
-/*
-    status: 'available',
-    filial: '01',
-    data: '14/10/2025',
-    tipo: 'CT-e',
-    documento: '123456789',
-    serie: 'CTE',
-    detail: [
-      {
-        package: 'Basic',
-        tour: 'City tour by public bus and visit to the main museums.',
-        time: '20:10:10',
-        distance: '1000'
-      },
-    ]
-*/
-    QRY->( dbSkip( ) )   
+    //Posiciona na primeira linha do registro
+    ( cAlias_ )->( dbGoTop() )
+
+    if nReg > jContent["pageSize"]
+      oDados['hasNext'] := .T.
+      oDados['nextPage'] := jContent["page"] + 1
+    else 
+      oDados['hasNext'] := .F.
+    Endif 
+
+  else
+    oDados['hasNext'] := .F.
+  endif
+
+  while ( cAlias_ )->( !EOF( ) )
+
+    nCount++
+
+    if nCount >= nStart 
+
+      oJson := JsonObject():new()
+      oJson['recno'] := ( cAlias_ )->recno
+      oJson['status'] := ( cAlias_ )->ZZ1_STATUS
+      oJson['acao'] := alltrim(( cAlias_ )->ZZ1_ACAO)
+      oJson['filial'] := alltrim(( cAlias_ )->ZZ1_FILCTE)
+      oJson['data'] := stod(( cAlias_ )->ZZ1_DATA)
+      oJson['hora'] := stod(( cAlias_ )->ZZ1_HORA)
+      oJson['chave'] := alltrim(( cAlias_ )->ZZ1_CHAVE)
+      oJson['documento'] := alltrim(( cAlias_ )->ZZ1_NUMCTE)
+      oJson['serie'] := alltrim(( cAlias_ )->ZZ1_SERCTE)
+      oJson['details'] := {}
+
+      aadd(aDados, oJson)
+
+      if len(aDados) >= jContent["pageSize"] 
+        exit
+      endif
+    endif
+
+    ( cAlias_ )->( dbSkip( ) )   
   endDo 
-  QRY->( dbCloseArea() )
+  ( cAlias_ )->( dbCloseArea() )
 
   oDados["data"] := aDados
 
 Return oDados:toJson()
+
+/*/{Protheus.doc} ExcluirDoc(cContent)
+  (long_description)
+  @type  Static Function
+  @author user
+  @since 22/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  @example
+  (examples)
+  @see (links_or_references)
+/*/
+Static Function ExcluirDoc(cContent)
+  
+  local jContent := JsonObject():new()
+  
+  jContent:fromJson(cContent)
+
+  ZZ1->( dbSetOrder( 1 ) )
+  ZZ1->( dbGoTo( jContent["recno"] ) )
+
+  Begin Transaction
+
+    recLock("ZZ1", .F.)
+      ZZ1->(dbDelete())
+    ZZ1->( MsUnLock() )
+  
+  end transaction
+
+Return ""
+
+/*/{Protheus.doc} baixaDocto
+  (long_description)
+  @type  Static Function
+  @author user
+  @since 22/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  @example
+  (examples)
+  @see (links_or_references)
+/*/
+Static Function baixaDocto(cContent)
+  local jContent := JsonObject():new()
+  local cCaminho := ""
+  local oJson := JsonObject():new()
+
+  jContent:fromJson(cContent)
+
+  ZZ1->( dbSetOrder( 1 ) )
+  ZZ1->( dbGoTo( jContent["recno"] ) )
+
+  cCaminho := "c:\temp\" + alltrim(ZZ1->ZZ1_CHAVE) + ".xml"
+
+  //Se o arquivo já existir, fará a exclusão
+    If File(cCaminho)
+        FErase(cCaminho)
+    EndIf
+
+  lReturn := memoWrite(cCaminho, ZZ1->ZZ1_XML)
+
+  if lReturn 
+    oJson["status"] := .T.
+    oJson["message"] := "Arquivo salvo em: " + cCaminho
+  else 
+    oJson["status"] := .F.
+    oJson["message"] := "Ocorreu um erro ao salvar o arquivo no caminho: " + cCaminho
+  endif
+
+Return oJson:toJson()

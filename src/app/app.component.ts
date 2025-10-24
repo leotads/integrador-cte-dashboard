@@ -25,7 +25,7 @@ import {
 })
 export class AppComponent {
   readonly menus: Array<PoMenuItem> = [
-    { label: 'Dashboard', link: '/', icon: 'an an-chart-line', shortLabel: 'Dashboard' },
+    { label: 'Dashboard', link: 'dashboard', icon: 'an an-chart-line', shortLabel: 'Dashboard' },
     { label: 'Monitor', link: 'monitor', icon: 'an an-monitor', shortLabel: 'Monitor' },
   ];
 
@@ -39,8 +39,4 @@ export class AppComponent {
     }
   }
 
-  private onClick(menu: string) {
-    console.log(menu)
-    this.router.navigate([`/${menu}`]);
-  }
 }

@@ -12,7 +12,8 @@ import {
   PoLoadingModule,
   PoChartOptions,
   PoChartSerie,
-  PoNotificationService
+  PoNotificationService,
+  PoTab
 } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { Router } from '@angular/router';
@@ -31,7 +32,7 @@ import { ProtheusService } from '../../services/protheus.service';
     PoLoadingModule
   ],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css'
+  styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent {
   isLoading: boolean = true;
@@ -44,16 +45,28 @@ export class DashboardComponent {
   chartDocumentsPerDayOptions: PoChartOptions = {};
   chartDocumentsPerDayCategories: Array<string> = [];
   chartDocumentsPerDaySeries: Array<PoChartSerie> = [];
-  optionsColumnDocumentsPerMonth: PoChartOptions = {};
-  categoriesColumnDocumentsPerMonth: Array<string> = [];
-  DocumentsPerMonth: Array<PoChartSerie> = [];
+
+  chartDocumentsPerMonthOptions: PoChartOptions = {};
+  chartDocumentsPerMonthCategories: Array<string> = [];
+  chartDocumentsPerMonthSeries: Array<PoChartSerie> = [];
+  
+  chartDocumentsPerYearOptions: PoChartOptions = {};
+  chartDocumentsPerYearCategories: Array<string> = [];
+  chartDocumentsPerYearSeries: Array<PoChartSerie> = [];
+  
+  chartDocumentsPerYearsOptions: PoChartOptions = {};
+  chartDocumentsPerYearsCategories: Array<string> = [];
+  chartDocumentsPerYearsSeries: Array<PoChartSerie> = [];
+  
+  /*
+  
   optionsColumnDocumentsPerYear: PoChartOptions = {};
   categoriesColumnDocumentsPerYear: Array<string> = [];
   DocumentsPerYear: Array<PoChartSerie> = [];
   optionsColumnAllDocuments: PoChartOptions = {};
   categoriesColumnAllDocuments: Array<string> = [];
   allDocuments: Array<PoChartSerie> = [];
-
+*/
   constructor(
     private proJsToAdvplService: ProJsToAdvplService,
     private protheusService: ProtheusService,
@@ -77,11 +90,7 @@ export class DashboardComponent {
       this.getQuantityDocuments(),
       this.getQuantityIntegrated(),
       this.getQuantityErrors(),
-      this.chartDocumentsPerDay(),
-      this.chartDocumentsPerMonth(),
-      this.chartDocumentsPerYear(),
-      this.chartDocumentsPerYears(),
-
+      this.chartDocumentsPerDay()
     ])
     .catch((err) => this.poNotification.error("erro ao buscar os registros"))
     .finally(() => this.isLoading = true)
@@ -114,7 +123,7 @@ export class DashboardComponent {
       })
   }
 
-  private chartDocumentsPerDay() {
+  async chartDocumentsPerDay() {
 
     this.protheusService.getProtheus(
       'chartDocumentsPerDay',
@@ -136,12 +145,13 @@ export class DashboardComponent {
 
       },
       error: (error) => error
-    })
+    });
 
     
   }
 
-  private chartDocumentsPerMonth() {
+  async chartDocumentsPerMonth() {
+
 
     const [ ano, mes ] = this.startDate.split('-');
     const mesAno = `${mes}/${ano}` 
@@ -152,27 +162,28 @@ export class DashboardComponent {
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
-
-        this.optionsColumnDocumentsPerMonth = {
+        
+        this.chartDocumentsPerMonthOptions = {
           axis: {
             maxRange: data?.axis?.maxRange,
             gridLines: this.maiorDivisor(data?.axis?.maxRange)
           }
         };
-    
-        this.categoriesColumnDocumentsPerMonth = data?.axisX;
-    
-        this.DocumentsPerMonth = data?.data;
+        
+        this.chartDocumentsPerMonthCategories = data?.axisX;
+        
+        this.chartDocumentsPerMonthSeries = data?.data;
 
       },
       error: (error) => error
     })
 
+    
   }
 
-  private chartDocumentsPerYear() {
+  async chartDocumentsPerYear() {
 
-    const [ ano ] = this.startDate.split('-');
+    const [ ano ] = this.startDate.split('-'); 
 
     this.protheusService.getProtheus(
       'chartDocumentsPerYear',
@@ -181,45 +192,46 @@ export class DashboardComponent {
       next: (result) => {
         const data: any = JSON.parse(result);
 
-        this.optionsColumnDocumentsPerYear = {
+        this.chartDocumentsPerYearOptions = {
           axis: {
             maxRange: data?.axis?.maxRange,
             gridLines: this.maiorDivisor(data?.axis?.maxRange)
           }
         };
     
-        this.categoriesColumnDocumentsPerYear = data?.axisX;
+        this.chartDocumentsPerYearCategories = data?.axisX;
     
-        this.DocumentsPerYear = data?.data;
+        this.chartDocumentsPerYearSeries = data?.data;
 
       },
       error: (error) => error
-    });
+    })
 
   }
 
-  private chartDocumentsPerYears() {
+  async chartDocumentsPerYears() {
+
 
     this.protheusService.getProtheus(
-      'chartDocumentsPerYears'
+      'chartDocumentsPerYears',
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
 
-        this.optionsColumnAllDocuments = {
+        this.chartDocumentsPerYearsOptions = {
           axis: {
             maxRange: data?.axis?.maxRange,
             gridLines: this.maiorDivisor(data?.axis?.maxRange)
           }
         };
     
-        this.categoriesColumnAllDocuments = data?.axisX;
+        this.chartDocumentsPerYearsCategories = data?.axisX;
     
-        this.allDocuments = data?.data;
+        this.chartDocumentsPerYearsSeries = data?.data;
 
       },
       error: (error) => error
-    });
+    })
 
   }
 
@@ -230,5 +242,19 @@ export class DashboardComponent {
     return 1;
   }
 
-  changeDate() {}
+  openMonitor(status: string) {
+    this.router.navigate(["/monitor"], {
+      queryParams: {
+        status: status
+      }
+    })
+  }
+
+  changeDate() {
+    this.chartDocumentsPerDay()
+    this.chartDocumentsPerMonth()
+    this.chartDocumentsPerYear()
+    this.chartDocumentsPerYears()
+  }
+
 } 

@@ -1,17 +1,18 @@
 import { Component } from '@angular/core';
-import { PoNotificationService, PoPageModule, PoTableAction, PoTableColumn, PoTableColumnSort, PoTableModule } from '@po-ui/ng-components';
+import { PoDialogModule, PoDialogService, PoNotificationService, PoPageModule, PoTableAction, PoTableColumn, PoTableColumnSort, PoTableModule } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { ProtheusService } from '../../services/protheus.service';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-monitor',
   imports: [
     PoTableModule,
-    PoPageModule
+    PoPageModule,
+    PoDialogModule 
   ],
   templateUrl: './monitor.component.html',
-  styleUrl: './monitor.component.css'
+  styleUrls: ['./monitor.component.css']
 })
 export class MonitorComponent {
 
@@ -26,11 +27,19 @@ export class MonitorComponent {
         ]
       },
       { property: 'filial' },
-      { property: 'data' },
+      { property: 'data', format: 'dd/MM/yyyy' },
       { property: 'documento' },
       { property: 'serie' },
-      { property: 'acao' },
       { property: 'chave' },
+      { 
+        property: 'acao', 
+        type: 'label',
+        labels: [
+          { value: "I", label: "Inclusão" },
+          { value: "C", label: "Carta Correção" },
+          { value: "E", label: "Exclusão" },
+        ]
+      },
     ];
   columnsDefault: Array<PoTableColumn> = [];
   detail: any;
@@ -40,10 +49,12 @@ export class MonitorComponent {
   initialColumns: Array<any> = [];
   showMoreDisabled: boolean = false;
   isLoading: boolean = false;
-
+  pagination: object = {page: 0, pageSize: 5}
+  status: string = "";
+  
   actions: Array<PoTableAction> = [
     {
-      action: this.excluir.bind(this),
+      action: this.confirmDelete.bind(this),
       icon: 'po-icon an an-trash',
       label: 'Excluir'
       //disabled: this.validateDiscount.bind(this)
@@ -62,9 +73,11 @@ export class MonitorComponent {
     constructor(
       private proJsToAdvplService: ProJsToAdvplService,
       private protheusService: ProtheusService,
-      public poNotification: PoNotificationService,
       private proAppConfigService: ProAppConfigService,
-      private router: Router
+      private router: Router,
+      public poNotification: PoNotificationService,
+      public poDialog: PoDialogService,
+      private activatedRoute: ActivatedRoute
     ) {
       if (!this.proAppConfigService.insideProtheus()) {
         this.proAppConfigService.loadAppConfig();
@@ -73,7 +86,17 @@ export class MonitorComponent {
   
 
   ngOnInit(): void {
+    
+    this.activatedRoute.queryParams.subscribe( params => {
+      if (params['status'] == "integracao") {
+        this.status = "I";
+      } else if(params['status'] == "erros") {
+        this.status = "E"
+      }
+    });
+
     this.onLoading();
+
   }
 
   onLoading() {
@@ -81,70 +104,79 @@ export class MonitorComponent {
 
     this.protheusService.getProtheus(
       'getDocuments',
-      //JSON.stringify({date: this.startDate})
+      JSON.stringify({ ...this.pagination, status: this.status })
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
 
+        this.showMoreDisabled = !data.hasPage;
+        this.pagination = {...this.pagination, page: data.nextPage}
+
         this.items = data.data;
       },
-      error: (error) => error
-    })
+      error: (error) => error,
+      complete: () => this.isLoading = true
+    });
+  }
+  excluir(item: any) {
+    this.isLoading = false;
+
+    this.protheusService.getProtheus(
+      'excluiDocument',
+      JSON.stringify(item)
+    ).subscribe({
+      next: (result) => {
+        this.onLoading();
+
+        this.poNotification.success("Registro excluído com sucesso!")
+      },
+      error: (error) => this.poNotification.error("Não foi possível excluir o registro!"),
+      complete: () => this.isLoading = true
+    });
   }
 
-  excluir() {
+  confirmDelete(item: any) {
+    if (item.status !== "E") {
+      return this.poNotification.information("Só é permitido excluir registros com erros na integração!");
+    }
+
+    this.poDialog.confirm({
+      literals: {cancel: "Cancelar", confirm: "Confirmar"},
+      title: "Confirmação de exclusão",
+      message: "Confirma a exclusão do registro?",
+      confirm: () => this.excluir(item),
+    });
+  }
+
+
+  reprocess(item: any) {
 
   }
 
-  reprocess() {
+  openXML(item: any) {
+    this.isLoading = false;
 
-  }
+    this.protheusService.getProtheus(
+      'downloadDocument',
+      JSON.stringify(item)
+    ).subscribe({
+      next: (result) => {
+        const data: any = JSON.parse(result);
 
-  openXML() {
-//    const blob = new Blob([xmlData], { type: 'application/xml' });
-//    const url = window.URL.createObjectURL(blob);
-//    window.open(url, '_blank');
+        if (data.status) {
+          this.poNotification.success(data.message);
+        } else {
+          this.poNotification.error(data.message);
+        }
+      },
+      error: (error) => this.poNotification.error("Não foi possível baixar o XML!"),
+      complete: () => this.isLoading = true
+    });
   }
 
   showMore(sort: PoTableColumnSort) {
-    this.isLoading = true;
-    this.showMoreDisabled = true;
-    /*setTimeout(() => {
-      this.items = this.getItems(sort);
-      this.isLoading = false;
-    }, 4000);*/
+    this.onLoading();
   }
 
-  decreaseTotal(row: any) {
-    if (row.value) {
-      this.total -= row.value;
-    }
-  }
 
-  deleteItems(items: Array<any>) {
-    this.items = items;
-  }
-
-  onCollapseDetail() {
-    this.totalExpanded -= 1;
-    this.totalExpanded = this.totalExpanded < 0 ? 0 : this.totalExpanded;
-  }
-
-  onExpandDetail() {
-    this.totalExpanded += 1;
-  }
-
-  sumTotal(row: any) {
-    if (row.value) {
-      this.total += row.value;
-    }
-  }
-
-  restoreColumn() {
-    this.columns = this.columnsDefault;
-  }
-
-  changeColumnVisible(event: any) {
-    localStorage.setItem('initial-columns', event);
-  }
 }
