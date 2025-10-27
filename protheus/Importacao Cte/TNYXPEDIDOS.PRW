@@ -101,10 +101,10 @@ METHOD NEW() CLASS TNYXPEDIDOS
 	self:cTIPOTIT			:= ''
 RETURN SELF
 
-//±±ºDesc.     ³Metodo principal de inclusao da NF                          º±±
-//±±º          ³Este metodo utiliza outros metodos para fazer todo o proce- º±±
-//±±º          ³dimento, que inicia com a inclusao do pedido de venda e vai º±±
-//±±º          ³ate a geracao da NF de saida.                               º±±
+//Desc.     ³Metodo principal de inclusao da NF                          
+//          ³Este metodo utiliza outros metodos para fazer todo o proce- 
+//          ³dimento, que inicia com a inclusao do pedido de venda e vai 
+//          ³ate a geracao da NF de saida.                               
 METHOD INCLUIRNF() CLASS TNYXPEDIDOS
    local lResult	:= .T.
    local nStart, cCodZZ1 
@@ -125,8 +125,8 @@ METHOD INCLUIRNF() CLASS TNYXPEDIDOS
   	MSUNLOCKALL()
 return lResult
 
-//±±ºDesc.     ³Metodo auxiliar para fazer verificacoes antes da inclusao daº±±
-//±±º          ³NF                                                          º±±
+//Desc.     ³Metodo auxiliar para fazer verificacoes antes da inclusao da
+//          ³NF                                                          
 METHOD VERIFICA() CLASS TNYXPEDIDOS
 	local lResult	:= .T.
 	local aTabelas	:= {'SC5', 'SC6', 'SC9', 'SF2', 'SD2'}
@@ -146,7 +146,7 @@ METHOD VERIFICA() CLASS TNYXPEDIDOS
 
 return lResult
 
-//±±ºDesc.     ³Metodo auxiliar utilizado para incluir pedido de venda      º±±
+//Desc.     ³Metodo auxiliar utilizado para incluir pedido de venda      
 METHOD INCLUIRPEDIDO() CLASS TNYXPEDIDOS
 	local 	lResult
 	private 	lMsErroAuto := .F.    
@@ -154,7 +154,7 @@ METHOD INCLUIRPEDIDO() CLASS TNYXPEDIDOS
 	lResult	:= ::ACAO()
 return lResult
 
-//±±ºDesc.     ³Metodo auxiliar que serve para liberar o pedido de venda    º±±
+//Desc.     ³Metodo auxiliar que serve para liberar o pedido de venda    
 METHOD LIBERAPEDIDO() CLASS TNYXPEDIDOS
 	local i
 	local oAuxPed
@@ -183,8 +183,8 @@ METHOD LIBERAPEDIDO() CLASS TNYXPEDIDOS
 	next
 return .T.  
 
-//±±ºDesc.     ³Metodo auxiliar que serve para gerar a nota fiscal de saida º±±
-//±±º          ³a partir de um pedido de venda ja liberado.                 º±±
+//Desc.     ³Metodo auxiliar que serve para gerar a nota fiscal de saida 
+//          ³a partir de um pedido de venda ja liberado.                 
 METHOD GERANF() CLASS TNYXPEDIDOS
 	local lResult		:= .T.
 	Local aPvlNfs 		:= {}
@@ -326,7 +326,8 @@ METHOD GERANF() CLASS TNYXPEDIDOS
 			//backup do tipo para geracao do titulo
 			cMVNOTBKP := MVNOTAFIS
 
-			//verifica se foi informado			If !Empty(self:cTIPOTIT)			
+			//verifica se foi informado		
+			If !Empty(self:cTIPOTIT)			
 				MVNOTAFIS := self:cTIPOTIT
 			EndIf
 
@@ -358,8 +359,8 @@ METHOD GERANF() CLASS TNYXPEDIDOS
 	endif
 Return lResult
 
-//±±ºDesc.     ³Metodo principal da exclusao da nota fiscal de saida.       º±±
-//±±º          ³Este metodo chamara diversos metodos auxiliares.            º±±
+//Desc.     ³Metodo principal da exclusao da nota fiscal de saida.       
+//          ³Este metodo chamara diversos metodos auxiliares.            
 METHOD EXCLUIRNF() CLASS TNYXPEDIDOS
 	local lResult	:= .T.
 
@@ -441,13 +442,13 @@ METHOD EXCLUIRNF() CLASS TNYXPEDIDOS
 	next
 return lResult 
 
-//±±ºDesc.     ³Metodo auxiliar que serve para por no ::SC5:C5_NUM o numero º±±
-//±±º          ³do pedido de venda vinculado a nota fiscal passada nos pa-  º±±
-//±±º          ³rametros.                                                   º±±
-//±±º          ³Eh necessario este metodo pois ficamos sem o numero do pe-  º±±
-//±±º          ³dido apos a exclusao da nota e, apos a exclusao da nota nos º±±
-//±±º          ³precisamos desliberar o pedido e exclui-lo, para nao ficar  º±±
-//±±º          ³com lixo na base de dados                                   º±±
+//Desc.     ³Metodo auxiliar que serve para por no ::SC5:C5_NUM o numero 
+//          ³do pedido de venda vinculado a nota fiscal passada nos pa-  
+//          ³rametros.                                                   
+//          ³Eh necessario este metodo pois ficamos sem o numero do pe-  
+//          ³dido apos a exclusao da nota e, apos a exclusao da nota nos 
+//          ³precisamos desliberar o pedido e exclui-lo, para nao ficar  
+//          ³com lixo na base de dados                                   
 METHOD QUALPEDIDO() CLASS TNYXPEDIDOS
 	local lResult	:= .T.     
 	local cQuery	:= ''      
@@ -499,8 +500,8 @@ METHOD QUALPEDIDO() CLASS TNYXPEDIDOS
 
 return lResult 
 
-//±±ºDesc.     ³Metodo que retorna quais foram as NFs geradas a partir dos  º±±
-//±±º          ³pedidos informados                                          º±±
+//Desc.     ³Metodo que retorna quais foram as NFs geradas a partir dos  
+//          ³pedidos informados                                          
 METHOD QUALNF() CLASS TNYXPEDIDOS
 	local lResult	:= .T.     
 	local cQuery	:= ''      
@@ -536,8 +537,8 @@ METHOD QUALNF() CLASS TNYXPEDIDOS
 	next
 return lResult 
 
-//±±ºDesc.     ³Metodo auxiliar que serve para cancelar a nota fiscal de    º±±
-//±±º          ³saida.                                                      º±±
+//Desc.     ³Metodo auxiliar que serve para cancelar a nota fiscal de    
+//          ³saida.                                                      
 METHOD CANCELNF() CLASS TNYXPEDIDOS
 	local lResult	:= .T.                       
 	
@@ -560,8 +561,8 @@ METHOD CANCELNF() CLASS TNYXPEDIDOS
       				  {"F2_FORMUL"   	,cFormul   	,Nil},;      				  
       				  {"F2_TIPO"    	,cTipo		,Nil}}
 
-	MSExecAuto({|x| u_MATA520(x)},aMata520Cab)
-	//MSExecAuto({|x| MATA520(x)},aMata520Cab)
+	//MSExecAuto({|x| u_MATA520(x)},aMata520Cab)
+	MSExecAuto({|x| MATA520(x)},aMata520Cab)
 	
 
 	If lMsErroAuto
@@ -570,9 +571,9 @@ METHOD CANCELNF() CLASS TNYXPEDIDOS
 	EndIf   
 return lResult  
 
-//±±ºDesc.     ³Metodo auxiliar que serve para desliberar o pedido de venda º±±
-//±±º          ³vinculado a nota fiscal passada no parametro pois, sem des- º±±
-//±±º          ³liberar o sistema nao aceita exclui-lo                      º±±
+//Desc.     ³Metodo auxiliar que serve para desliberar o pedido de venda 
+//          ³vinculado a nota fiscal passada no parametro pois, sem des- 
+//          ³liberar o sistema nao aceita exclui-lo                      
 METHOD DESLIBERARPEDIDO() CLASS TNYXPEDIDOS
 	local lResult	:= .T.     
 	local cQuery	:= ''      
@@ -600,7 +601,7 @@ METHOD DESLIBERARPEDIDO() CLASS TNYXPEDIDOS
 	next
 return lResult
 
-//±±ºDesc.     ³Metodo auxiliar utilizado para excluir pedido de venda      º±±
+//Desc.     ³Metodo auxiliar utilizado para excluir pedido de venda      
 METHOD EXCLUIRPEDIDO() CLASS TNYXPEDIDOS
 	local lResult			:= .T.
 	private lMsErroAuto  := .F.    
@@ -609,8 +610,8 @@ METHOD EXCLUIRPEDIDO() CLASS TNYXPEDIDOS
   
 return lResult
 
-//±±ºDesc.     ³Metodo auxiliar que serve para incluir, alterar e excluir   º±±
-//±±º          ³pedidos de venda, utilize a variavel nAcao para definir istoº±±
+//Desc.     ³Metodo auxiliar que serve para incluir, alterar e excluir   
+//          ³pedidos de venda, utilize a variavel nAcao para definir isto
 METHOD ACAO() CLASS TNYXPEDIDOS
 
 	local aCamposSC5		:= {}
@@ -749,9 +750,9 @@ Static Function SetacFilAnt(_cFilial)
 	endif
 return             
 
-//±±ºDesc.     ³Metodo responsavel por replicar os campos do SC6 para o SD2,º±±
-//±±º          ³os campos que serao replicados sao os que estao no array    º±±
-//±±º          ³self:aC6toD2                                                º±±
+//Desc.     ³Metodo responsavel por replicar os campos do SC6 para o SD2,
+//          ³os campos que serao replicados sao os que estao no array    
+//          ³self:aC6toD2                                                
 METHOD REPLICARCAMPOS() CLASS TNYXPEDIDOS
 	local lResult		:= .T.
 	local aFieldsC6	:= self:aC6toD2
@@ -807,8 +808,8 @@ METHOD REPLICARCAMPOS() CLASS TNYXPEDIDOS
 return lResult
 
 
-//±±ºDesc.     ³Funcao que testa o componente, fazendo as operacoes basicas º±±
-//±±º          ³do mesmo.                                                   º±±
+//Desc.     ³Funcao que testa o componente, fazendo as operacoes basicas 
+//          ³do mesmo.                                                   
 User Function 50TestPedido()
 	local aSC6		:= {}
 	local oPedido	:=	TNYXPEDIDOS():New()
@@ -998,8 +999,8 @@ user function 010PedVend()
 
 Return
 
-//±±ºDesc.     ³Funcao que testa o componente, fazendo as operacoes basicas º±±
-//±±º          ³do mesmo.                                                   º±±
+//Desc.     ³Funcao que testa o componente, fazendo as operacoes basicas 
+//          ³do mesmo.                                                   
 User Function geraNF(cFil,aProds)
 	local aSC6		:= {}
 	local oPedido	:=	TNYXPEDIDOS():New()
@@ -1059,8 +1060,8 @@ User Function geraNF(cFil,aProds)
 //	oPedido:EXCLUIRNF()
 Return
 
-//±±ºDesc.     ³Funcao que testa o componente, fazendo as operacoes basicas º±±
-//±±º          ³do mesmo.                                                   º±±
+//Desc.     ³Funcao que testa o componente, fazendo as operacoes basicas 
+//          ³do mesmo.                                                   
 User Function criaSaldo(cFil,aProds)
 	
 	local cLocal := '01'
