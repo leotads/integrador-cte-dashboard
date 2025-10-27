@@ -1,0 +1,235 @@
+#Include "totvs.ch" 
+#include "protheus.ch"
+
+/*/{Protheus.doc} IntegraNF
+  (long_description)
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  /*/
+Class IntegraNF
+  
+
+  public method new()
+  public method integrar()
+
+  private Method findOrCreateClient()
+  private Method findOrCreateOrder()
+
+EndClass
+
+/*/{Protheus.doc} new
+  (long_description)
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method new() class IntegraNF
+  
+Return 
+
+/*/{Protheus.doc} integrar
+  (long_description)
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method integrar(oPedido) class IntegraNF
+
+  varError := ErrorClass():New()
+  
+  Default oPedido := JsonObject():new()
+
+  TRY
+
+    aCliente := ::findOrCreateClient(oCliente := oPedido["client"])
+
+    if !aCliente[1]
+      varError:genCode := 001
+      varError:description := aClient[2]
+      throw varError
+    endif
+
+    aPedido := ::findOrCreateOrder(oPedido := oPedido, aClient := aClient[2])
+
+    if !aPedido[1]
+      varError:genCode := 001
+      varError:description := aPedido[2]
+      throw varError
+    endif
+  CATCH oError
+
+  EndTry
+
+Return 
+
+/*/{Protheus.doc} findOrCreateClient
+  Retorna um cliente existente ou cria um cliente
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method findOrCreateClient(oCliente) class IntegraNF
+
+  Local cCGC		:= ""
+	Local cIE		:= ""
+	Local cFantasia	:= ""
+	Local cNome	:= ""
+	Local cCep		:= ""
+	Local cLogradouro	:= ""
+	Local cMunicipio	:= ""
+	Local cNumero	:= ""
+	Local cEstado		:= ""
+	Local cBairro	:= ""
+	Local cCodMun_	:= ""
+	Local cCodTel	:= ""
+	Local cCodRegiao := ""
+  Local aSA1Auto := {}
+  Local aAI0Auto := {}
+  Local aRetorno_ := {}
+
+  if oClient:hasProperty("cgc")
+    cCGC := oClient["cgc"]
+  else 
+    return { .F., "É necessário enviar o cpf/cnpj do cliente!" }
+  endif
+  
+  if oClient:hasProperty("ie")
+    cIE := oClient["ie"]
+  endif
+
+  if oClient:hasProperty("nome")
+    cNome := oClient["nome"]
+  else 
+    return { .F., "É necessário enviar o nome do cliente!" }
+  endif
+
+  if oClient:hasProperty("fantasia")
+    cFantasia := UPPER( substr( oClient["fantasia"] , 1, TAMSX3("A1_NREDUZ")[1] ) )
+  else 
+    cFantasia := UPPER( substr( cNome , 1, TAMSX3("A1_NREDUZ")[1] ) )
+  endif
+
+  if oClient:hasProperty("telefone")
+    cCodTel := oClient["telefone"]
+  endif
+
+  if oClient:hasProperty("endereco")
+    
+    if oClient["endereco"]:hasProperty("cep")
+      cCep := oClient["endereco"]["cep"]
+    else 
+      return { .F., "É necessário enviar o cep do endereço!" }
+    endif
+  
+    if oClient["endereco"]:hasProperty("logradouro")
+      cLogradouro := oClient["endereco"]["logradouro"]
+    else 
+      return { .F., "É necessário enviar o logradouro do endereço!" }
+    endif
+
+    if oClient["endereco"]:hasProperty("municipio")
+      cMunicipio := oClient["endereco"]["municipio"]
+    else 
+      return { .F., "É necessário enviar o municipio do endereço!" }
+    endif
+
+    if oClient["endereco"]:hasProperty("bairro")
+      cBairro := oClient["endereco"]["bairro"]
+    else 
+      return { .F., "É necessário enviar o bairro do endereço!" }
+    endif
+
+    if oClient["endereco"]:hasProperty("estado")
+      cEstado := oClient["endereco"]["estado"]
+    else 
+      return { .F., "É necessário enviar o estado do endereço!" }
+    endif
+
+    if oClient["endereco"]:hasProperty("numero")
+      cNumero := oClient["endereco"]["numero"]
+    else 
+      return { .F., "É necessário enviar o numero do endereço!" }
+    endif
+  
+    cCodMun_ := POSICIONE( "CC2", 4, xFilial("CC2") + cEstado + UPPER(alltrim( cMuninipio )), "CC2_CODMUN" )
+
+    //Caso não localize o código do municipio irá retornar uma falha e não seguirá no processo
+    if empty(cCodMun_)
+      return { .F.,  'Não foi localizado o código do municipio: ' + CRLF + "Municipio: " + alltrim(cMun) + CRLF + "Estado: " + cEst}
+    endif
+  
+  else 
+    return { .F., "É necessário enviar o endereço!" }
+  endif
+
+  
+  SA1->( dbSetOrder(3) )
+  if SA1->( dbSeek( xFilial( "SA1" ) + cCGC ) )
+
+    return { .T., SA1->A1_COD, SA1->A1_LOJA }
+
+  endif
+
+  cDoc := getSx8Num("SA1", A1_COD)
+  
+
+  //----------------------------------
+  // Dados do Cliente
+  //----------------------------------
+  aAdd(aSA1Auto,{'A1_COD'  	  , cDoc,Nil})
+  aAdd(aSA1Auto,{'A1_LOJA'    , "01",Nil})
+  aAdd(aSA1Auto,{'A1_PESSOA'  , IIF(LEN(cCGC) == 14, "J", "F"),Nil})
+  aAdd(aSA1Auto,{'A1_TIPO'    , "F",Nil})
+  aAdd(aSA1Auto,{'A1_CGC'     , cCGC,Nil})
+  aAdd(aSA1Auto,{'A1_NOME'    , Substr(cNome,1,TAMSX3("A1_NOME")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_NREDUZ'  , Substr(cFantasia,1,TAMSX3("A1_NREDUZ")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_END'     , Substr(cEndereco,1,TAMSX3("A1_END")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_BAIRRO'  , Substr(cBairro,1,TAMSX3("A1_BAIRRO")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_EST'     , cEstado ,Nil})
+  aAdd(aSA1Auto,{'A1_MUN'     , Substr(cMuncipio,1,TAMSX3("A1_MUN")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_COD_MUN' , Substr(cCodMun_,3,TAMSX3("A1_COD_MUN")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_CEP'     , Substr(cCEP,1,TAMSX3("A1_CEP")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_DDD'     , Substr(cCodTel,1,2),Nil})
+  aAdd(aSA1Auto,{'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_INSCR'   , Substr(cIE,1,TAMSX3("A1_INSCR")[1]),Nil})
+  aAdd(aSA1Auto,{'A1_CDRDES'  , cCodRegiao,Nil})
+  aAdd(aSA1Auto,{'A1_CODPAIS' , "01058",Nil})
+  aAdd(aSA1Auto,{'A1_MSBLQL'  , "2",Nil})
+  aAdd(aSA1Auto,{"A1_INCISS"  , "N" ,Nil})
+
+  MSExecAuto({|a,b,c| CRMA980(a,b,c)}, aSA1Auto, nOpcAuto, aAI0Auto)
+
+  If lMsErroAuto 
+    RollBAckSx8()
+
+    cArquivo := FwTimeStamp() + "_mercado_livre_execauto.txt"
+    MostraErro( GetSrvProfString("Startpath","") , cArquivo )
+    cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArquivo )
+
+    aRetorno_ := { .F., cMsg }
+
+  Else
+    ConfirmSX8()
+    aRetorno_ := { .T., cDoc, "01" }
+  EndIf
+
+Return aRetorno_
+
+/*/{Protheus.doc} findOrCreateOrder
+  Retorna um pedido de venda existente ou cria um pedido de venda
+  @author Leonardo Freitas
+  @since 27/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method findOrCreateOrder(oPedido, aClient) class IntegraNF
+  
+Return 

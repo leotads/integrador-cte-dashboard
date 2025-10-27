@@ -70,7 +70,14 @@ User Function LOSF0001(nRecNoZZ1)
     TMPZZ1->(DbGoTop())
     
     While !TMPZZ1->(Eof()) 
-        cRet := ProcessaCTE(TMPZZ1->RECZZ1, 'P')        
+        cRet := ProcessaCTE(TMPZZ1->RECZZ1, 'P')    
+
+        if ZZ1->ZZ1_TIPO == "1" //CTE
+            cRet := ProcessaCTE(TMPZZ1->RECZZ1, 'P')   
+        elseif ZZ1->ZZ1_TIPO == "2" //NFse
+            cRet := ProcesNFse(TMPZZ1->RECZZ1, 'P')   
+        endif
+
         TMPZZ1->(DbSkip())
     EndDo
 
@@ -95,11 +102,41 @@ User Function LOSF001B(cTipo)
     EndIf
 
     If !Empty(cTipo)
-        ProcessaCTE(ZZ1->(Recno()), cTipo )
+        if ZZ1->ZZ1_TIPO == "1" //CTE
+            ProcessaCTE(ZZ1->(Recno()), cTipo )
+        elseif ZZ1->ZZ1_TIPO == "2" //NFse
+            ProcesNFse(ZZ1->(recno()), cTipo)
+        endif
         //MSAguarde( { || ProcessaCTE(ZZ1->(Recno()), cTipo ) }, cTitulo ,"Processando...",.F.)
     EndIf
     
 Return
+
+/*/{Protheus.doc} ProcesNFse
+    (long_description)
+    @type  Static Function
+    @author user
+    @since 24/10/2025
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function ProcesNFse(nRecno_, cTipo_)
+
+    Local oData := JsonObject():new()
+    Local oIntNFse := IntegraNF():new()
+
+    ZZ1->( dbSetOrder() )
+    ZZ1->( dbGoTo(nRecno_) )
+
+    oData:toJson(ZZ1->ZZ1_XML)
+
+    lReturn_ := oIntNFse:integrar(oData)
+
+Return 
 
 /*/{Protheus.doc} ProcessaCTE
  * Funcao que faz o processamento dos CTEs incluindo os pedidos de venda
