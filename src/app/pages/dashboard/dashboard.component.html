@@ -1,15 +1,18 @@
 <po-page-default>
-  <div class="po-row">
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2">
+  <div class="po-row" style="justify-content: space-evenly;">
+    <po-widget class="po-sm-12 po-md-4 po-lg-4 po-xl-4 po-mb-4">
       <div class="po-text-center"><img src="assets/img/grupolos.png" alt="Logo da Empresa" class="logo"></div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('')" p-title="TOTAL DE DOCUMENTOS">
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('')" p-title="Total">
       <div class="po-font-display po-text-center">{{numberOfDocuments || 0}}</div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('I')" p-title="INTEGRADOS">
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('A')" p-title="Abertos">
+      <div class="po-font-display po-text-center">{{numberOpenOfDocuments || 0}}</div>
+    </po-widget>
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('P')" p-title="Integrados">
       <div class="po-font-display po-text-center">{{integratedQuantity || 0}}</div>
     </po-widget>
-    <po-widget class="po-sm-12 po-md-6 po-lg-3 po-xl-3 po-mb-2 widgetButton" (p-click)="openMonitor('E')" p-title="ERROS">
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('E')" p-title="Erros">
       <div class="po-font-display po-text-center">{{numberOfErrors || 0}}</div>
     </po-widget>
   </div>
@@ -35,7 +38,7 @@
             <po-chart
               class="po-md-12 "
               p-title="Requisições por dia"
-              [p-options]="chartDocumentsPerDayOptions"
+              [p-options]="optionsChart"
               [p-categories]="chartDocumentsPerDayCategories"
               [p-series]="chartDocumentsPerDaySeries"
             >
@@ -47,7 +50,7 @@
           <po-chart
             class="po-md-12"
             p-title="Requisições por mês"
-            [p-options]="chartDocumentsPerMonthOptions"
+            [p-options]="optionsChart"
             [p-categories]="chartDocumentsPerMonthCategories"
             [p-series]="chartDocumentsPerMonthSeries"
           >
@@ -58,7 +61,7 @@
         <po-chart
           class="po-md-12"
           p-title="Requisições por ano"
-          [p-options]="chartDocumentsPerYearOptions"
+          [p-options]="optionsChart"
           [p-categories]="chartDocumentsPerYearCategories"
           [p-series]="chartDocumentsPerYearSeries"
         >
@@ -68,7 +71,7 @@
         <po-chart
           class="po-md-12"
           p-title="Quantidade de requisições"
-          [p-options]="chartDocumentsPerYearsOptions"
+          [p-options]="optionsChart"
           [p-categories]="chartDocumentsPerYearsCategories"
           [p-series]="chartDocumentsPerYearsSeries"
         >

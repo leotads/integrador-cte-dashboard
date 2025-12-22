@@ -10,7 +10,7 @@ Tem finalidade de carregar o Documento transferido do sistema Legado e a série p
 @param cNumDoc, character, Número do documento que deverá ser gerado
 /*/
 User Function M460NUM
-    If (IsInCallStack('PROCESSACTE') .OR. IsInCallStack('PROCESSANFSE') ) .AND. Type("cYNumNF") <> 'U'
+    If (IsInCallStack('PROCESSACTE') .OR. IsInCallStack('ProcesNFse') ) .AND. Type("cYNumNF") <> 'U'
         cNumero	:= cYNumNF
     EndIf
 Return

@@ -48,6 +48,8 @@ CLASS TNYXPEDIDOS
 	DATA		aSC9Validos
 	DATA		lExluiPedido
 	DATA 		lMostrarErro
+
+	DATA cArqErro	AS STRING
 	
 	DATA 		aNUMNFS //Numeracao das NFS informadas pelo usuario
 	DATA 		cTIPOTIT //Tipo que sera gerado o titulo no financeiro
@@ -96,9 +98,11 @@ METHOD NEW() CLASS TNYXPEDIDOS
 	self:lCRIASB2			:= .T.        
 	self:aSC9Validos		:= {}	   
 	self:lExluiPedido		:= .T.
-	self:lMostrarErro		:= .T.
+	self:lMostrarErro		:= .F.
 	self:aNUMNFS			:= {}	
 	self:cTIPOTIT			:= ''
+
+	self:cArqErro	:= "erroauto.txt" 
 RETURN SELF
 
 //Desc.     ³Metodo principal de inclusao da NF                          
@@ -107,7 +111,6 @@ RETURN SELF
 //          ³ate a geracao da NF de saida.                               
 METHOD INCLUIRNF() CLASS TNYXPEDIDOS
    local lResult	:= .T.
-   local nStart, cCodZZ1 
    Static cSaida := ''
 	SetacFilAnt(self:FILIAL)
 	if lResult
@@ -189,11 +192,11 @@ METHOD GERANF() CLASS TNYXPEDIDOS
 	local lResult		:= .T.
 	Local aPvlNfs 		:= {}
 	Local aMata520Cab	:= {}
-	local i, j
+	local i
    local oAuxPed
    local aAliasNFe	:= {}   
    local cNumNota
-	local cMV_TPNRNFS :=  GetMv('MV_TPNRNFS')
+	//local cMV_TPNRNFS :=  GetMv('MV_TPNRNFS')
 			
 
 	//ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
@@ -372,13 +375,13 @@ METHOD EXCLUIRNF() CLASS TNYXPEDIDOS
 	local cFormul	:= Space(len(SF2->F2_FORMUL))
 
 	local nStart	:= 0
-	local cCodZZ1	:= ''
+	//local cCodZZ1	:= ''
 	local oAuxCrud   
 	local i
 
 	SetacFilAnt(self:FILIAL)
 	
-	private cSaida	:= ''	
+	//private cSaida	:= ''	
 	private lMsErroAuto	:= .F.
    
 	nStart := Seconds()
@@ -452,8 +455,8 @@ return lResult
 METHOD QUALPEDIDO() CLASS TNYXPEDIDOS
 	local lResult	:= .T.     
 	local cQuery	:= ''      
-	local cNumPed
-	local i
+	//local cNumPed
+	//local i
 	local oAuxPed
 
 	cQuery 	:= " SELECT R_E_C_N_O_ AS RECNOSC5 "
@@ -504,8 +507,8 @@ return lResult
 //          ³pedidos informados                                          
 METHOD QUALNF() CLASS TNYXPEDIDOS
 	local lResult	:= .T.     
-	local cQuery	:= ''      
-	local cNumPed
+	//local cQuery	:= ''      
+	//local cNumPed
 	local i
 	local oAuxPed
 	local aAuxNF	:= {}
@@ -567,6 +570,9 @@ METHOD CANCELNF() CLASS TNYXPEDIDOS
 
 	If lMsErroAuto
 //		MostraErro()
+		//cArquivo := FwTimeStamp() + "_cancela_nf.txt"
+		MostraErro( GetSrvProfString("Startpath","") , cArqErro )
+		cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArqErro )
 		lResult	:= .F.
 	EndIf   
 return lResult  
@@ -576,7 +582,7 @@ return lResult
 //          ³liberar o sistema nao aceita exclui-lo                      
 METHOD DESLIBERARPEDIDO() CLASS TNYXPEDIDOS
 	local lResult	:= .T.     
-	local cQuery	:= ''      
+	//local cQuery	:= ''      
 	local cNumPed
 	local	aMata410Cab 
 	local aMata410Itens 
@@ -617,8 +623,8 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 	local aCamposSC5		:= {}
 	local aCamposSC6		:= {}
 	local aCpoSC6Aux		:= {}
-	local cRetorno 		:= 'PEDIDO'
-	local lResult			:= .T.
+	//local cRetorno 		:= 'PEDIDO'
+	//local lResult			:= .T.
 	local i, t, z
 	local oPedAux
 	local laC6CustomFields	:= !empty(self:aC6CUSTOMFIELDS)
@@ -652,8 +658,28 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 		aAdd(aCamposSC5, {'C5_TRANSP'	,oPedAux:Get('C5_TRANSP' )	,nil})
 		aAdd(aCamposSC5, {'C5_VEICULO',oPedAux:Get('C5_VEICULO')	,nil})
 		aAdd(aCamposSC5, {'C5_DESPESA',oPedAux:Get('C5_DESPESA')	,nil})
+		aAdd(aCamposSC5, {'C5_NATUREZ', oPedAux:Get('C5_NATUREZ') , nil }) 	//CONDICAO DE PGTO
+		aAdd(aCamposSC5, {"C5_TIPLIB" ,_cC5TipLib        			,Nil}) // Tipo de Liberacao. 1 - Por item	 
 		
-		aAdd(aCamposSC5, {"C5_TIPLIB" ,_cC5TipLib        			,Nil}) // Tipo de Liberacao. 1 - Por item	 	
+		aAdd(aCamposSC5, {"C5_UFDEST" , oPedAux:Get('C5_UFDEST')        			,Nil})
+		aAdd(aCamposSC5, {"C5_CMUNDE" , oPedAux:Get('C5_CMUNDE')        			,Nil})
+		aAdd(aCamposSC5, {"C5_UFORIG" , oPedAux:Get('C5_UFORIG')        			,Nil})
+		aAdd(aCamposSC5, {"C5_CMUNOR" , oPedAux:Get('C5_CMUNOR')        			,Nil})
+		
+		//Cliente Remetente
+		aAdd(aCamposSC5, {"C5_CLIRET" ,oPedAux:Get('C5_CLIRET')        			,Nil})
+		aAdd(aCamposSC5, {"C5_LOJARET" ,oPedAux:Get('C5_LOJARET')        			,Nil})
+		
+		//Cliente Destino
+		aAdd(aCamposSC5, {"C5_CLIENT" ,oPedAux:Get('C5_CLIENT')        			,Nil})
+		aAdd(aCamposSC5, {"C5_LOJAENT" ,oPedAux:Get('C5_LOJAENT')        			,Nil})
+		
+		//Peso/carga
+		aAdd(aCamposSC5, {"C5_PBRUTO" ,oPedAux:Get('C5_PBRUTO')        			,Nil})
+		aAdd(aCamposSC5, {"C5_VOLUME1" ,oPedAux:Get('C5_VOLUME1')        			,Nil})
+
+		aAdd(aCamposSC5, {"C5_TPFRETE" ,oPedAux:Get('C5_TPFRETE')        			,Nil})
+		aAdd(aCamposSC5, {"C5_CLASFIS" ,oPedAux:Get('C5_CLASFIS')        			,Nil})
 
 		if laC5CustomFields
 			for z:= 1 to len(self:aC5CUSTOMFIELDS)
@@ -691,8 +717,12 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 			aAdd(aCpoSC6Aux, {"C6_DESPESA",oPedAux:Get('C6_DESPESA')	,nil})
 
 			aAdd(aCpoSC6Aux, {"C6_VALDESC",oPedAux:Get('C6_VALDESC')	,nil})
-         
-           if !empty(oPedAux:Get('C6_LOCAL'))
+			
+			aAdd(aCpoSC6Aux, {"C6_CLASFIS",oPedAux:Get('C6_CLASFIS')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_CF",oPedAux:Get('C6_CF')	,nil})
+
+   
+      if !empty(oPedAux:Get('C6_LOCAL'))
 				aAdd(aCpoSC6Aux, {"C6_LOCAL"  ,oPedAux:Get('C6_LOCAL')	,nil})
 			endif
 			
@@ -725,6 +755,9 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 				MostraErro()
 			EndIf
 		  	CONOUT("=====================================ERRO NA GERAÇÃO DA NF "+cSaida+"========================================")
+				
+				MostraErro( GetSrvProfString("Startpath","") , cArqErro )
+				cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArqErro )
 		else
 			if nAcao	<> 5
 				oPedAux:Set('C5_NUM'		, SC5->C5_NUM		)
@@ -811,7 +844,7 @@ return lResult
 //Desc.     ³Funcao que testa o componente, fazendo as operacoes basicas 
 //          ³do mesmo.                                                   
 User Function 50TestPedido()
-	local aSC6		:= {}
+	//local aSC6		:= {}
 	local oPedido	:=	TNYXPEDIDOS():New()
 	local oCrud
 	LOCAL I
@@ -869,10 +902,10 @@ User Function 50TestPedido()
 Return
                          
 User Function 01P11edVend(nOpc)
-	local aSC6		:= {}
+	//local aSC6		:= {}
 	local oPedido	:=	TNYXPEDIDOS():New()
 	local oCrud
-	LOCAL I
+	//LOCAL I
 	PREPARE ENVIRONMENT EMPRESA '01' FILIAL '01' TABLES 'SC5'
 	cFilAnt	:= u_QQUm('SM0', 'M0_CODFIL')
  	oPedido:SERIENF	:= '1  '
@@ -995,6 +1028,7 @@ user function 010PedVend()
 
    If lMsErroAuto
 //      MostraErro()
+		
    Endif   
 
 Return
@@ -1002,7 +1036,7 @@ Return
 //Desc.     ³Funcao que testa o componente, fazendo as operacoes basicas 
 //          ³do mesmo.                                                   
 User Function geraNF(cFil,aProds)
-	local aSC6		:= {}
+	//local aSC6		:= {}
 	local oPedido	:=	TNYXPEDIDOS():New()
 	local oCrud
 	LOCAL I
@@ -1063,7 +1097,7 @@ Return
 //Desc.     ³Funcao que testa o componente, fazendo as operacoes basicas 
 //          ³do mesmo.                                                   
 User Function criaSaldo(cFil,aProds)
-	
+	local i := 0
 	local cLocal := '01'
 
 	For i=1 to len(aProds)

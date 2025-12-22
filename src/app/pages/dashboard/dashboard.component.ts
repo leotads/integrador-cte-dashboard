@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { format, formatDate } from 'date-fns';
 
@@ -17,6 +17,7 @@ import {
 } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { ProtheusService } from '../../services/protheus.service';
+import { timeout } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
@@ -35,29 +36,63 @@ import { ProtheusService } from '../../services/protheus.service';
 })
 export class DashboardComponent {
 
-  @Output() alterarStatus = new EventEmitter<string>();
-  @Output() alterarPage = new EventEmitter<string>();
+  @Input() acao!: (page: string, status: string) => void;
 
   isLoading: boolean = true;
   numberOfDocuments: string = '0';
+  numberOpenOfDocuments: string = '0';
   integratedQuantity: string = '0';
   numberOfErrors: string = '0';
   endDate: string = <any>new Date();
   startDate: string = <any>format(new Date(), 'yyyy-MM-dd');
 
-  chartDocumentsPerDayOptions: PoChartOptions = {};
+  optionsChart: PoChartOptions = {
+    axis: {
+      minRange: undefined,
+      maxRange: undefined,
+      gridLines: undefined,
+      labelType: undefined,
+      paddingBottom: undefined,
+      paddingLeft: undefined,
+      paddingRight: undefined,
+      rotateLegend: undefined,
+      showXAxis: undefined,
+      showYAxis: undefined,
+      showAxisDetails: undefined
+    },
+    header: {
+      hideExpand: undefined,
+      hideExportCsv: undefined,
+      hideExportImage: undefined,
+      hideTableDetails: undefined
+    },
+    dataZoom: undefined,
+    fillPoints: undefined,
+    firstColumnName: undefined,
+    innerRadius: undefined,
+    borderRadius: undefined,
+    textCenterGraph: undefined,
+    descriptionChart: undefined,
+    subtitleGauge: undefined,
+    legend: undefined,
+    legendPosition: undefined,
+    legendVerticalPosition: undefined,
+    bottomDataZoom: undefined,
+    rendererOption: undefined,
+    pointer: undefined,
+    stacked: undefined,
+    roseType: undefined,
+    showFromToLegend: undefined
+  };
   chartDocumentsPerDayCategories: Array<string> = [];
   chartDocumentsPerDaySeries: Array<PoChartSerie> = [];
 
-  chartDocumentsPerMonthOptions: PoChartOptions = {};
   chartDocumentsPerMonthCategories: Array<string> = [];
   chartDocumentsPerMonthSeries: Array<PoChartSerie> = [];
   
-  chartDocumentsPerYearOptions: PoChartOptions = {};
   chartDocumentsPerYearCategories: Array<string> = [];
   chartDocumentsPerYearSeries: Array<PoChartSerie> = [];
   
-  chartDocumentsPerYearsOptions: PoChartOptions = {};
   chartDocumentsPerYearsCategories: Array<string> = [];
   chartDocumentsPerYearsSeries: Array<PoChartSerie> = [];
   
@@ -83,6 +118,7 @@ export class DashboardComponent {
 
     Promise.all([
       this.getQuantityDocuments(),
+      this.getQuantityOpenDocuments(),
       this.getQuantityIntegrated(),
       this.getQuantityErrors(),
       this.chartDocumentsPerDay()
@@ -109,6 +145,15 @@ export class DashboardComponent {
       })
   }
 
+  async getQuantityOpenDocuments() {
+    this.protheusService.getProtheus('getQuantityOpenDocuments')
+      .subscribe({
+        next: (result) => {
+          this.numberOpenOfDocuments = result;
+        }
+      })
+  }
+
   async getQuantityErrors() {
     this.protheusService.getProtheus('getQuantityErrors')
       .subscribe({
@@ -126,13 +171,6 @@ export class DashboardComponent {
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
-
-        this.chartDocumentsPerDayOptions = {
-          axis: {
-            maxRange: data?.axis?.maxRange,
-            gridLines: this.maiorDivisor(data?.axis?.maxRange)
-          }
-        };
     
         this.chartDocumentsPerDayCategories = data?.axisX;
     
@@ -157,14 +195,7 @@ export class DashboardComponent {
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
-        
-        this.chartDocumentsPerMonthOptions = {
-          axis: {
-            maxRange: data?.axis?.maxRange,
-            gridLines: this.maiorDivisor(data?.axis?.maxRange)
-          }
-        };
-        
+                
         this.chartDocumentsPerMonthCategories = data?.axisX;
         
         this.chartDocumentsPerMonthSeries = data?.data;
@@ -187,13 +218,6 @@ export class DashboardComponent {
       next: (result) => {
         const data: any = JSON.parse(result);
 
-        this.chartDocumentsPerYearOptions = {
-          axis: {
-            maxRange: data?.axis?.maxRange,
-            gridLines: this.maiorDivisor(data?.axis?.maxRange)
-          }
-        };
-    
         this.chartDocumentsPerYearCategories = data?.axisX;
     
         this.chartDocumentsPerYearSeries = data?.data;
@@ -213,13 +237,6 @@ export class DashboardComponent {
       next: (result) => {
         const data: any = JSON.parse(result);
 
-        this.chartDocumentsPerYearsOptions = {
-          axis: {
-            maxRange: data?.axis?.maxRange,
-            gridLines: this.maiorDivisor(data?.axis?.maxRange)
-          }
-        };
-    
         this.chartDocumentsPerYearsCategories = data?.axisX;
     
         this.chartDocumentsPerYearsSeries = data?.data;
@@ -230,26 +247,10 @@ export class DashboardComponent {
 
   }
 
-  maiorDivisor(valor: number) {
-    for (let i = Math.floor(valor); i > 0; i--) {
-      if (valor % i === 0) return i;
-    }
-    return 1;
-  }
+  async openMonitor(status: string) {
 
-  openMonitor(status: string) {
+    this.acao("Monitor", status)
 
-    this.enviarStatus(status);
-    this.enviarPage();
-
-  }
-
-  enviarStatus(status: string) {
-    this.alterarStatus.emit(status)
-  }
-
-  enviarPage() {
-    this.alterarPage.emit("Monitor")
   }
 
   changeDate() {

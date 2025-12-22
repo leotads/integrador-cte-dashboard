@@ -19,6 +19,7 @@ Tela de integração de notas CTE GW
 User Function LOST0001()
 
   CHKFILE("ZZ1")
+  CHKFILE("ZZ2")
 
   FwCallApp("integrador-cte-dashboard")
 Return 
@@ -39,11 +40,13 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
 
   Do Case
     Case cType == 'getQuantityDocuments'
-      oWebChannel:AdvPLToJS('getQuantityDocuments', cValToChar(qtdAllDocs()))
+      oWebChannel:AdvPLToJS('getQuantityDocuments', cValToChar(qtdRegists()))
     Case cType == 'getQuantityIntegrated'
-      oWebChannel:AdvPLToJS('getQuantityIntegrated', cValToChar(qtdAllInte()))
+      oWebChannel:AdvPLToJS('getQuantityIntegrated', cValToChar(qtdRegists('P')))
+    Case cType == 'getQuantityOpenDocuments'
+      oWebChannel:AdvPLToJS('getQuantityOpenDocuments', cValToChar(qtdRegists('A')))
     Case cType == 'getQuantityErrors'
-      oWebChannel:AdvPLToJS('getQuantityErrors', cValToChar(qtdAllErrs()))
+      oWebChannel:AdvPLToJS('getQuantityErrors', cValToChar(qtdRegists('E')))
     Case cType == 'chartDocumentsPerDay'
       oWebChannel:AdvPLToJS('chartDocumentsPerDay', reqPerDay(cContent))
     Case cType == 'chartDocumentsPerMonth'
@@ -60,6 +63,8 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
       oWebChannel:AdvPLToJS('downloadDocument', encodeutf8(baixaDocto(cContent)))
     Case cType == 'reprocessDocument'
       oWebChannel:AdvPLToJS('reprocessDocument', encodeutf8(reproDocto(cContent)))
+    Case cType == 'getLog'
+      oWebChannel:AdvPLToJS('getLog', encodeutf8(getLog(cContent)))
   End
 
 Return .T.
@@ -76,14 +81,21 @@ Return .T.
   (examples)
   @see (links_or_references)
 /*/
-Static Function qtdAllDocs()
+Static Function qtdRegists(cStatus)
 
   Local nQuantidade := 0
+  Local cWhere := "% %"
+  default cStatus := ""
+
+  if !empty(cStatus)
+    cWhere := "% AND ZZ1.ZZ1_STATUS = '" + alltrim(cStatus) + "' %"
+  endif
 
   BeginSQL alias 'ZZ1TOT'
     SELECT COUNT(*) quantidade
-      FROM %table:ZZ1% zz1 
-     WHERE zz1.%notdel%
+      FROM %table:ZZ1% ZZ1 
+     WHERE ZZ1.%notdel%
+     %exp:cWhere%
   EndSql
   
   if ZZ1TOT->( !eof() )
@@ -94,65 +106,6 @@ Static Function qtdAllDocs()
 
 Return nQuantidade
 
-/*/{Protheus.doc} qtdAllInte
-  Retorna a quantidade de CTE integradas do GW
-  @type  Static Function
-  @author Leonardo Freitas
-  @since 15/10/2025
-  @version version
-  @param param_name, param_type, param_descr
-  @return return_var, return_type, return_description
-  @example
-  (examples)
-  @see (links_or_references)
-/*/
-Static Function qtdAllInte(param_name)
-
-  Local nQuantidade := 0
-
-  BeginSql alias 'QRYAllInte'
-    SELECT count(*) quantidade
-      FROM %table:ZZ1% ZZ1
-     WHERE ZZ1.ZZ1_STATUS = 'F' AND 
-           ZZ1.%notdel%
-  endSql
-
-  if QRYAllInte->( !EOF( ) )
-    nQuantidade := QRYAllInte->quantidade
-  endif 
-  QRYAllInte->( dbCloseArea( ) )
-
-Return nQuantidade
-
-/*/{Protheus.doc} qtdAllErrs
-  Retorna a quantidade de erros de integração de CTE do GW
-  @type  Static Function
-  @author Leonardo Freitas
-  @since 15/10/2025
-  @version version
-  @param param_name, param_type, param_descr
-  @return return_var, return_type, return_description
-  @example
-  (examples)
-  @see (links_or_references)
-/*/
-Static Function qtdAllErrs()
-
-  Local nQuantidade := 0
-
-  BeginSql alias 'AllErrs'
-    SELECT count(*) quantidade
-      FROM %table:ZZ1% ZZ1
-     WHERE ZZ1.ZZ1_STATUS = 'E' AND 
-           ZZ1.%notdel%
-  endSql
-
-  if AllErrs->( !EOF( ) )
-    nQuantidade := AllErrs->quantidade
-  endif 
-  AllErrs->( dbCloseArea( ) )
-
-Return nQuantidade
 
 /*/{Protheus.doc} reqPerDay
   Retorna a quantidade de documentos por dia
@@ -211,7 +164,7 @@ Static Function reqPerDay(cContent)
         Do Case
         Case QRYPerDay->ZZ1_STATUS == 'A'
           aAbertos[nPos] += 1
-        Case QRYPerDay->ZZ1_STATUS == 'F'
+        Case QRYPerDay->ZZ1_STATUS == 'P'
           aConcluidos[nPos] += 1
         Case QRYPerDay->ZZ1_STATUS == 'E'
           aErros[nPos] += 1
@@ -318,7 +271,7 @@ Static Function rqPerMonth(cContent)
 
       if QRYPerMonth->ZZ1_STATUS == 'A'
         aAbertos[nPos] := QRYPerMonth->quantidade
-      elseif QRYPerMonth->ZZ1_STATUS == 'F'
+      elseif QRYPerMonth->ZZ1_STATUS == 'P'
         aConcluidos[nPos] := QRYPerMonth->quantidade
       elseif QRYPerMonth->ZZ1_STATUS == 'E'
         aErros[nPos] := QRYPerMonth->quantidade
@@ -428,7 +381,7 @@ Static Function rqPerYear(cContent)
 
       if QRYPerYear->ZZ1_STATUS == 'A'
         aAbertos[nPos] := QRYPerYear->quantidade
-      elseif QRYPerYear->ZZ1_STATUS == 'F'
+      elseif QRYPerYear->ZZ1_STATUS == 'P'
         aConcluidos[nPos] := QRYPerYear->quantidade
       elseif QRYPerYear->ZZ1_STATUS == 'E'
         aErros[nPos] := QRYPerYear->quantidade
@@ -542,7 +495,7 @@ Static Function rqPerYears(cContent)
 
       if QRYPYears->ZZ1_STATUS == 'A'
         aAbertos[nPos] := QRYPYears->quantidade
-      elseif QRYPYears->ZZ1_STATUS == 'F'
+      elseif QRYPYears->ZZ1_STATUS == 'P'
         aConcluidos[nPos] := QRYPYears->quantidade
       elseif QRYPYears->ZZ1_STATUS == 'E'
         aErros[nPos] := QRYPYears->quantidade
@@ -642,6 +595,7 @@ Static Function getAllDocs(cContent)
       FROM %table:ZZ1% zz1 
      WHERE zz1.D_E_L_E_T_ = ' '
      %exp:cWhere%
+     ORDER BY R_E_C_N_O_ desc
   EndSql
 
   if ( cAlias_ )->( !eof() )
@@ -677,11 +631,12 @@ Static Function getAllDocs(cContent)
 
       oJson := JsonObject():new()
       oJson['recno'] := ( cAlias_ )->recno
+      oJson['codigo'] := ( cAlias_ )->ZZ1_CODIGO
       oJson['status'] := ( cAlias_ )->ZZ1_STATUS
       oJson['acao'] := alltrim(( cAlias_ )->ZZ1_ACAO)
       oJson['filial'] := alltrim(( cAlias_ )->ZZ1_FILCTE)
-      oJson['data'] := stod(( cAlias_ )->ZZ1_DATA)
-      oJson['hora'] := stod(( cAlias_ )->ZZ1_HORA)
+      oJson['data'] := dtoc(stod(( cAlias_ )->ZZ1_DATA))
+      oJson['hora'] := ( cAlias_ )->ZZ1_HORA
       oJson['chave'] := alltrim(( cAlias_ )->ZZ1_CHAVE)
       oJson['documento'] := alltrim(( cAlias_ )->ZZ1_NUMCTE)
       oJson['serie'] := alltrim(( cAlias_ )->ZZ1_SERCTE)
@@ -796,6 +751,48 @@ Static Function reproDocto(cContent)
   ZZ1->( dbSetOrder( 1 ) )
   ZZ1->( dbGoTo( jContent["recno"] ) )
 
-  cRetorno := LOSF001B("P")
+  cRetorno := u_LOSF001B("P")
 
 Return cRetorno
+
+/*/{Protheus.doc} getLog
+  (long_description)
+  @type  Static Function
+  @author user
+  @since 30/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  @example
+  (examples)
+  @see (links_or_references)
+/*/
+Static Function getLog(cContent)
+  Local jContent := JsonObject():new()
+  Local oData := JsonObject():new()
+
+  jContent:fromJson(cContent)
+
+  cCodigo := jContent["codigo"]
+
+  BeginSql alias 'QRY'
+    SELECT zz2.R_E_C_N_O_ recno
+      FROM %table:ZZ2% zz2 
+     WHERE zz2.ZZ2_codzz1 = %exp:cCodigo% AND 
+           zz2.%notdel% AND 
+           ROWNUM = 1
+     ORDER BY R_E_C_N_O_ desc
+  Endsql
+
+  if QRY->( !EOF() )
+
+    ZZ2->( dbSetOrder(1) )
+    ZZ2->( dbGoTo(QRY->recno) )
+
+    oData["data"] := dToc(ZZ2->ZZ2_DTPROS)
+    oData["hora"] := alltrim(ZZ2->ZZ2_HRPROS)
+    oData["detalhe"] := ZZ2->ZZ2_LOG
+  endif 
+  QRY->( dbCloseArea() )  
+
+Return oData:toJson()

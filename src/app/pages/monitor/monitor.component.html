@@ -1,10 +1,37 @@
 <po-page-default>
+  <div class="po-row po-mb-1" style="justify-content: space-between; align-items: center;">
+    <div>
+      <div class="po-font-text-large-bold">Filtros: </div>
+      <po-context-tabs #poTab p-size="small">
+        <po-tab
+          *ngFor="let tab of tabsFilters; let i = index"
+          [p-active]="tab.active"
+          [p-disabled]="tab.disabled"
+          [p-hide]="tab.hide"
+          [p-hide-close]="tab.hideClose"
+          [p-label]="tab.label"
+          (p-click)="onClick(tab)"
+          (p-close-tab)="onClose(tab)"
+        >
+          <div class="po-font-subtitle">Tab Content {{ i }}</div>
+        </po-tab>
+      </po-context-tabs>
+    </div>
+    <div>
+      <po-button 
+        [p-icon]="filtered ? 'an-fill an-funnel' : 'an an-funnel'"
+        p-label="Filtrar" 
+        (p-click)="pageSlide.open()"
+      ></po-button>
+    </div>
+  </div>
+  <po-divider></po-divider>
   <po-table
-    p-container="true"
-    [p-height]="400"
+    p-container="shadow"
     [p-hide-batch-actions]="false"
+    [p-loading-show-more]="isLoading"
     [p-actions-right]="true"
-    [p-hide-table-search]="false"
+    [p-hide-table-search]="true"
     [p-hide-columns-manager]="true"
     [p-selectable-entire-line]="true"
     [p-sort]="false"
@@ -18,4 +45,66 @@
     (p-show-more)="showMore($event)"
   >
   </po-table>
+  
+  <po-modal p-title="Log de processamento" [p-primary-action]="confirmModal">
+    <div class="po-row">
+      <po-input 
+        class="po-md-6"
+        p-icon="an an-calendar-dots" 
+        p-label="Data"
+        [(ngModel)]="log.data"
+        p-disabled
+      > 
+      </po-input>
+      <po-input 
+        class="po-md-6" 
+        p-icon="an an-timer" 
+        p-label="Hora"
+        [(ngModel)]="log.hora"
+        p-disabled
+      > 
+      </po-input>
+    </div>
+    <div class="po-row">
+      <po-textarea 
+        class="po-md-12" 
+        name="log" 
+        [(ngModel)]="log.detalhe" 
+        p-label="Log processamento:" 
+        [p-rows]="8"
+        [p-disabled]="true"
+       >
+      </po-textarea>
+    </div>
+  </po-modal>
+  
 </po-page-default>
+
+<po-page-slide p-title="Filtrar" p-size="xl" #pageSlide>
+  <po-dynamic-form
+    #dynamicForm
+    [p-fields]="fieldsFilter"
+    [p-value]="value"
+  >
+  </po-dynamic-form>
+
+  <br />
+  
+  <div class="po-row">
+    <po-button
+    class="po-md-3"
+    p-label="Salvar"
+    (p-click)="salvar()"
+
+    >
+  </po-button>
+</div>
+<br />
+</po-page-slide>
+
+
+<po-loading-overlay
+  [hidden]="isLoadingDialog"
+>
+
+</po-loading-overlay>

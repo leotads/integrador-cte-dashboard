@@ -1,0 +1,774 @@
+#INCLUDE 'Rwmake.ch'
+#INCLUDE 'Protheus.ch'
+#INCLUDE 'Tbiconn.ch'
+#INCLUDE 'Topconn.ch'
+#Include 'totvs.ch'
+
+
+
+/*/{Protheus.doc} IntegraNF
+  (long_description)
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  /*/
+Class IntegraNF
+  
+  public data cDocumentoNfe    as character
+  public data cSerieNfe    as character
+  public data aPvlNfs   as object
+  public data aBloqueio as object
+
+  public data _BASEICM as numeric
+  public data _ALIQICM as numeric
+  public data _VALICM as numeric
+  public data _vlrINSS as numeric
+  public data _vlrIRRF as numeric
+  public data _nValPis as numeric
+  public data _nValCof as numeric
+  public data _nValCSL as numeric
+
+  public method new()
+  public method integrar()
+
+  private Method findOrCreateClient()
+  private Method findOrCreateOrder()
+  private Method unlockOrderItems()
+  private Method invoiceOrder()
+  private Method getTes()
+  private Method validSerie()
+  private Method calcImposto() 
+
+EndClass
+
+/*/{Protheus.doc} new
+  (long_description)
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method new() class IntegraNF
+  
+Return 
+
+/*/{Protheus.doc} integrar
+  (long_description)
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method integrar(oPedido, nRecno_) class IntegraNF
+
+  varError := ErrorClass():New()
+  
+  Default oPedido := JsonObject():new()
+
+  TRY
+
+    if !oPedido:hasProperty("serieDocumento")
+      varError:genCode := 001
+      varError:description := "Tag 'serieDocumento' não localizado no json!"
+      throw varError
+    endif 
+
+    ::cSerieNfe := oPedido["serieDocumento"]
+    cYNumNF := oPedido["numeroDocumento"]
+
+    ::validSerie()
+
+    aCliente := ::findOrCreateClient(oCliente := oPedido["cliente"])
+
+    if !aCliente[1]
+      varError:genCode := 001
+      varError:description := aClient[2]
+      throw varError
+    endif
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_CLIENT := aCliente[2]
+      ZZ1->ZZ1_LOJA := aCliente[3]
+    ZZ1->( msUnlock() )
+
+    aPedido_ := ::findOrCreateOrder(oPedido := oPedido, aClient := aCliente)
+
+    if !aPedido_[1]
+      varError:genCode := 001
+      varError:description := aPedido_[2]
+      throw varError
+    endif
+
+    cPedido := aPedido_[2]
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_CODPED := cPedido
+    ZZ1->( msUnlock() )
+
+    lItensPedido := ::unlockOrderItems(aPedido_[2])
+    
+    if !lItensPedido
+      varError:genCode := 004
+      varError:description := "Não foi possí­vel liberar os itens do pedido de venda!"
+      throw varError
+    endif
+
+    recLock("ZZ1", .F.)
+      ZZ1->ZZ1_LIBPED := .T.
+    ZZ1->( msUnLock() )
+
+    //Prepara as variaveis de impostos para serem processados nos pontos de entrada do documento de saída
+    ::calcImposto(oObjeto := oPedido)
+
+    _BASEICM := self:_BASEICM
+    _ALIQICM := self:_ALIQICM
+    _VALICM := self:_VALICM
+    _vlrINSS := self:_vlrINSS
+    _vlrIRRF := self:_vlrIRRF
+    _nValPis := self:_nValPis
+    _nValCof := self:_nValCof
+    _nValCSL := self:_nValCSL
+
+    ::invoiceOrder(aPedido_[2])
+
+    if empty(::cDocumentoNfe)
+      varError:genCode := 005
+      varError:description := "Não foi possí­vel faturar o pedido de venda!"
+      throw varError
+    endif
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_STATUS := "P"
+      ZZ1->ZZ1_FILCTE := cFilAnt
+      ZZ1->ZZ1_NUMCTE := ::cDocumentoNfe
+      ZZ1->ZZ1_SERCTE := ::cSerieNfe
+    ZZ1->( msUnlock() )
+
+    ZZ2->( dbSetOrder(1) )
+    recLock("ZZ2", .T.)
+        ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+        ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+        ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+        ZZ2->ZZ2_status := "P"
+        ZZ2->ZZ2_dtpros := dDataBase
+        ZZ2->ZZ2_hrpros := time()
+        ZZ2->ZZ2_log    := "Integração processada com sucesso"
+    ZZ2->( msUnLock() )
+
+    
+
+  CATCH oError
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_STATUS := "E"
+    ZZ1->( msUnlock() )
+
+    CHKFILE("ZZ2")
+
+    DBSelectArea( "ZZ2" )
+    recLock("ZZ2", .T.)
+      ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+      ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+      ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+      ZZ2->ZZ2_status := "E"
+      ZZ2->ZZ2_dtpros := dDataBase
+      ZZ2->ZZ2_hrpros := time()
+      ZZ2->ZZ2_log    := oError:description
+    ZZ2->( msUnLock() )
+
+  EndTry
+
+Return 
+
+/*/{Protheus.doc} findOrCreateClient
+  Retorna um cliente existente ou cria um cliente
+  @author Leonardo Freitas
+  @since 24/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method findOrCreateClient(oCliente) class IntegraNF
+
+  Local cCGC		:= ""
+	Local cIE		:= ""
+	Local cFantasia	:= ""
+	Local cNome	:= ""
+	Local cCep		:= ""
+	Local cLogradouro	:= ""
+	Local cMunicipio	:= ""
+	Local cNumero	:= ""
+	Local cEstado		:= ""
+	Local cBairro	:= ""
+	Local cCodMun_	:= ""
+	Local cCodTel	:= ""
+	Local cCodRegiao := ""
+//  Local aSA1Auto := {}
+//  Local aAI0Auto := {}
+  Local aRetorno_ := {}
+//  local nOpcAuto := 3
+
+  Private lMsErroAuto := .F.
+
+  if oCliente:hasProperty("cgc")
+    cCGC := oCliente["cgc"]
+  else 
+    return { .F., "É necessário enviar o cpf/cnpj do cliente!" }
+  endif
+  
+  if oCliente:hasProperty("ie")
+    cIE := oCliente["ie"]
+  endif
+
+  if oCliente:hasProperty("nome")
+    cNome := oCliente["nome"]
+  else 
+    return { .F., "É necessário enviar o nome do cliente!" }
+  endif
+
+  if oCliente:hasProperty("fantasia")
+    cFantasia := UPPER( substr( oCliente["fantasia"] , 1, TAMSX3("A1_NREDUZ")[1] ) )
+  endif
+  
+  if empty(cFantasia)
+    cFantasia := UPPER( substr( cNome , 1, TAMSX3("A1_NREDUZ")[1] ) )
+  endif
+
+  if oCliente:hasProperty("telefone")
+    cCodTel := oCliente["telefone"]
+  endif
+
+  if oCliente:hasProperty("endereco")
+    
+    if oCliente["endereco"]:hasProperty("cep")
+      cCep := oCliente["endereco"]["cep"]
+    else 
+      return { .F., "É necessário enviar o cep do endereço!" }
+    endif
+  
+    if oCliente["endereco"]:hasProperty("logradouro")
+      cLogradouro := oCliente["endereco"]["logradouro"]
+    else 
+      return { .F., "É necessário enviar o logradouro do endereço!" }
+    endif
+
+    if oCliente["endereco"]:hasProperty("municipio")
+      cMunicipio := oCliente["endereco"]["municipio"]
+    else 
+      return { .F., "É necessário enviar o municipio do endereço!" }
+    endif
+
+    if oCliente["endereco"]:hasProperty("bairro")
+      cBairro := oCliente["endereco"]["bairro"]
+    else 
+      return { .F., "É necessário enviar o bairro do endereço!" }
+    endif
+
+    if oCliente["endereco"]:hasProperty("estado")
+      cEstado := oCliente["endereco"]["estado"]
+    else 
+      return { .F., "É necessário enviar o estado do endereço!" }
+    endif
+
+    if oCliente["endereco"]:hasProperty("numero")
+      cNumero := oCliente["endereco"]["numero"]
+    else 
+      return { .F., "É necessário enviar o numero do endereço!" }
+    endif
+  
+    cCodMun_ := POSICIONE( "CC2", 4, xFilial("CC2") + cEstado + UPPER(alltrim( cMunicipio )), "CC2_CODMUN" )
+
+    //Caso não localize o código do municipio irá retornar uma falha e não seguirá no processo
+    if empty(cCodMun_)
+      return { .F.,  'Não foi localizado o código do municipio: ' + CRLF + "Municipio: " + alltrim(cMun) + CRLF + "Estado: " + cEst}
+    endif
+  
+  else 
+    return { .F., "É necessário enviar o endereço!" }
+  endif
+
+  
+  SA1->( dbSetOrder(3) )
+  if SA1->( dbSeek( xFilial( "SA1" ) + cCGC ) )
+
+    return { .T., SA1->A1_COD, SA1->A1_LOJA }
+
+  endif
+
+  cCod := getSx8Num("SA1", "A1_COD")
+  
+  lDeuCerto := .F.
+    
+  //Pegando o modelo de dados, setando a operação de inclusão
+  oModel := FWLoadModel("CRMA980") //"MATA030" na antiga MATA030
+  oModel:SetOperation(3)
+  oModel:Activate()
+    
+  //Pegando o model dos campos da SA1
+  oSA1Mod:= oModel:getModel("SA1MASTER") //"MATA030_SA1" na antiga MATA030
+  oSA1Mod:setValue("A1_COD",       cCod        ) // Codigo 
+  oSA1Mod:setValue("A1_LOJA",      '01'       ) // Loja
+  oSA1Mod:setValue("A1_NOME",      Substr(cNome,1,TAMSX3("A1_NOME")[1])       ) // Nome             
+  oSA1Mod:setValue("A1_NREDUZ",    Substr(cFantasia,1,TAMSX3("A1_NREDUZ")[1])   ) // Nome reduz. 
+  oSA1Mod:setValue("A1_END",       Substr(cLogradouro,1,TAMSX3("A1_END")[1])   ) // Endereco
+  oSA1Mod:setValue("A1_BAIRRO",    Substr(cBairro,1,TAMSX3("A1_BAIRRO")[1])     ) // Bairro
+  oSA1Mod:setValue("A1_TIPO",      "F"         ) // Tipo 
+  oSA1Mod:setValue("A1_EST",       cEstado        ) // Estado
+  oSA1Mod:setValue("A1_COD_MUN",   Substr(cCodMun_,1,TAMSX3("A1_COD_MUN")[1])     ) // Codigo Municipio                
+  oSA1Mod:setValue("A1_MUN",       Substr(cMunicipio,1,TAMSX3("A1_MUN")[1])    ) // Municipio
+  oSA1Mod:setValue("A1_CEP",       Substr(cCEP,1,TAMSX3("A1_CEP")[1])        ) // CEP
+  oSA1Mod:setValue("A1_INSCR",     cIE         ) // Inscricao Estadual
+  oSA1Mod:setValue("A1_CGC",       cCGC       ) // CNPJ/CPF            
+  //oSA1Mod:setValue("A1_PAIS",      cCodPais    ) // Pais            
+  //oSA1Mod:setValue("A1_EMAIL",     cEMail      ) // E-Mail
+  oSA1Mod:setValue("A1_DDD",        Substr(cCodTel,1,2)        ) // DDD            
+  oSA1Mod:setValue("A1_TEL",       Substr(cCodTel,3,TAMSX3("A1_TEL")[1])   ) // Fone                 
+  oSA1Mod:setValue("A1_PESSOA",    IIF(LEN(cCGC) == 14, "J", "F")  ) // Tipo Pessoa
+  oSA1Mod:setValue("A1_INCISS", "N" )
+  oSA1Mod:setValue("A1_CODPAIS", "01058" )
+  oSA1Mod:setValue("A1_CDRDES", cCodRegiao )
+
+  //Se conseguir validar as informações
+  If oModel:VldData()
+      
+    //Tenta realizar o Commit
+    If oModel:CommitData()
+        lDeuCerto := .T.
+          
+    //Se não deu certo, altera a variável para false
+    Else
+        lDeuCerto := .F.
+    EndIf
+      
+  //Se não conseguir validar as informações, altera a variável para false
+  Else
+      lDeuCerto := .F.
+  EndIf
+    
+  //Se não deu certo a inclusão, mostra a mensagem de erro
+  If ! lDeuCerto
+      //Busca o Erro do Modelo de Dados
+      aErro := oModel:GetErrorMessage()
+        
+      //Monta o Texto que será mostrado na tela
+      AutoGrLog("Id do formulário de origem:"  + ' [' + AllToChar(aErro[01]) + ']')
+      AutoGrLog("Id do campo de origem: "      + ' [' + AllToChar(aErro[02]) + ']')
+      AutoGrLog("Id do formulário de erro: "   + ' [' + AllToChar(aErro[03]) + ']')
+      AutoGrLog("Id do campo de erro: "        + ' [' + AllToChar(aErro[04]) + ']')
+      AutoGrLog("Id do erro: "                 + ' [' + AllToChar(aErro[05]) + ']')
+      AutoGrLog("Mensagem do erro: "           + ' [' + AllToChar(aErro[06]) + ']')
+      AutoGrLog("Mensagem da solução: "        + ' [' + AllToChar(aErro[07]) + ']')
+      AutoGrLog("Valor atribuído: "            + ' [' + AllToChar(aErro[08]) + ']')
+      AutoGrLog("Valor anterior: "             + ' [' + AllToChar(aErro[09]) + ']')
+        
+      //Mostra a mensagem de Erro
+      RollBAckSx8()
+
+      cArquivo := FwTimeStamp() + "_erro_cliente_execauto.txt"
+      MostraErro( GetSrvProfString("Startpath","") , cArquivo )
+      cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArquivo )
+
+      aRetorno_ := { .F., cMsg }
+  else 
+
+    ConfirmSX8()
+    aRetorno_ := { .T., cDoc, "01" }  
+
+  EndIf
+
+  //Desativa o modelo de dados
+  oModel:DeActivate()
+
+
+Return aRetorno_
+
+/*/{Protheus.doc} findOrCreateOrder
+  Retorna um pedido de venda existente ou cria um pedido de venda
+  @author Leonardo Freitas
+  @since 27/10/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method findOrCreateOrder(oPedido, aClient) class IntegraNF
+  
+  Local _cNatureza := '010102'//Alltrim(SuperGetMv("MS_NATCTE",.F.,"110101"))
+  Local cTes := '512'
+//  Local cCfop := ""
+//  Local nPesoBruto := 0
+
+  Private lMsErroAuto := .F.
+  Private cCond     := SuperGetMv("MS_CONDTRA",.F.,"000")
+
+  if !empty(ZZ1->ZZ1_CODPED)
+    return { .T., ZZ1->ZZ1_CODPED }
+  endif
+
+  cDoc := GetSxeNum("SC5", "C5_NUM")
+  ConfirmSX8()
+  //RollBAckSx8()
+  aCabec   := {}
+  aItens   := {}
+  aLinha   := {}
+
+  if !oPedido:hasProperty("servico")
+    return { .F., "Tag 'servico' não localizado no json!" }
+  endif
+
+  if !oPedido["servico"]:hasProperty("codigo")
+    return { .F., "Tag 'codigo' do servico não localizado no json!" }
+  endif
+/*
+  if oPedido:hasProperty("codigoCfop")
+    cCfop := alltrim(oPedido["codigoCfop"])
+  endif
+
+  if empty(cCfop)
+    return { .F., "Tag 'codigoCfop' do servico não localizado no json!" }
+  endif
+
+  if oPedido:hasProperty("codigoClasFis")
+    cClasFis := alltrim(oPedido["codigoClasFis"])
+  endif
+
+  if empty(cClasFis)
+    return { .F., "Tag 'cClasFis' do servico não localizado no json!" }
+  endif
+  
+  //cTes := '512'//::getTes(cCfop, cClasFis)
+
+  if empty(cTes)
+    return { .F., 'TES nao localizada para o CFOP ' + cCFOP }
+  endif
+*/
+
+  SB1->( dbSetOrder( 1 ) )
+  if SB1->( dbSeek( xFilial( "SB1" ) + alltrim( oPedido["servico"]["codigo"] ) ) )
+    
+    aadd(aLinha,{"C6_ITEM"   , StrZero(1,2), Nil})
+    aadd(aLinha,{"C6_PRODUTO", SB1->B1_COD       , Nil})
+//    aadd(aLinha,{"C6_LOCAL", "01"       , Nil})
+//    aadd(aLinha,{"C6_UNID", "UN"       , Nil})
+//    aadd(aLinha,{"C6_CLASFIS" , "040"            , Nil})
+//    aadd(aLinha,{"C6_TPOP" , "F"            , Nil})
+    aadd(aLinha,{"C6_QTDVEN" , 1            , Nil})
+    aadd(aLinha,{"C6_QTDLIB" , 1            , Nil})
+    aadd(aLinha,{"C6_PRCVEN" , oPedido["valorServico"]         , Nil})
+    aadd(aLinha,{"C6_PRUNIT" , oPedido["valorServico"]         , Nil})
+//    aadd(aLinha,{"C6_VALOR"  , oPedido["valorServico"]         , Nil})
+    aadd(aLinha,{"C6_TES"    , cTes       , Nil})
+
+//    aadd(aLinha,{"C6_CF" , cCFOP            , Nil})
+
+//    nPesoBruto += SB1->B1_PESBRU
+
+    aadd(aItens, aLinha)
+
+  else 
+
+    return { .F., "Nao foi possível localizar o produto no Protheus!" }
+
+  endif
+
+  SA1->( dbSetOrder( 1 ) )
+  SA1->( dbSeek( xFilial( "SA1" ) + aClient[2] + aClient[3] ) )
+
+  aadd(aCabec, {"C5_NUM"    , cDoc     , Nil})
+  aadd(aCabec, {"C5_TIPO"   , "N"      , Nil})
+  aadd(aCabec, {"C5_CLIENTE", aClient[2]  , Nil})
+  aadd(aCabec, {"C5_LOJACLI", aClient[3] , Nil})
+  aadd(aCabec, {"C5_LOJAENT", aClient[3] , Nil})
+  aadd(aCabec, {"C5_EMISSAO", ddatabase, nil })
+  aadd(aCabec, {"C5_CONDPAG", cCond, Nil})                
+  aadd(aCabec, {"C5_TIPOCLI", SA1->A1_TIPO, Nil})                
+  aadd(aCabec, {"C5_CLASFIS", POSICIONE("SF4", 1, xFilial("SF4") + cTes, "F4_CSTISS"), Nil}) 
+
+
+//  aadd(aCabec, {"C5_TPCARGA", "2", Nil})                
+//  aadd(aCabec, {"C5_NOMECLI", UPPER( subStr( fwNoaccent( SA1->A1_NOME ), 1, TAMSX3("C5_NOMECLI")[1] ) ), Nil})
+//  aadd(aCabec, {"C5_CODWEB", iif(!empty( cPackId ), cPackId, idMercadoLivre), Nil})                
+//  aadd(aCabec, {"C5_MENNOTA", "COMPRA #" + iif(!empty( cPackId ), cPackId, idMercadoLivre) + " MERCADO LIVRE", Nil})                
+  
+  
+//  aadd(aCabec, {"C5_VEND1", "000087", Nil})                
+//  aadd(aCabec, {"C5_COMIS1", 1.00, Nil})                
+  aadd(aCabec, {"C5_NATUREZ", _cNatureza, Nil})                
+//  aadd(aCabec, {"C5_VOLUME1", 1, Nil})                
+//  aadd(aCabec, {"C5_ESPECI1", "NFS", Nil})                
+//  aadd(aCabec, {"C5_TIPLIB", "2", Nil})                
+//  aadd(aCabec, {"C5_MOEDA", 1, Nil})                
+//  aadd(aCabec, {"C5_DESPESA", 0, Nil})                
+//  aadd(aCabec, {"C5_ACRSFIN", /* nAcrescimo */ 0, Nil}) //acrescimo financeiro     
+
+//  aadd(aCabec, {"C5_PBRUTO", nPesoBruto, Nil})                
+//  aadd(aCabec, {"C5_PESOL", nPesoBruto, Nil})  
+
+//  aShipping := ::getRequest(" /shipments/" + cValToChar(oOrder["shipping"]["id"]) + "/costs")
+
+//  if !aShipping[1] 
+//    return {.F., "Não foi possível buscar o valor do frete"}
+//  endif
+
+//  aadd(aCabec, {"C5_VLR_FRT", aShipping[2]["receiver"]["cost"], Nil})                
+//  aadd(aCabec, {"C5_FRETE", 0.00 /*aShipping[2]["receiver"]["cost"]*/, Nil})                
+//  aadd(aCabec, {"C5_TRANSP", iif(aShipping[2]["logistic_type"] == "drop_off", "000962", "001531"), Nil})                
+//  aadd(aCabec, {"C5_TPFRETE", "C", Nil})                
+
+  CONOUT("Iniciando a gravacao")
+  MSExecAuto({|a, b, c, d| MATA410(a, b, c, d)}, aCabec, aItens, 3, .F.)
+
+  If !lMsErroAuto
+      //nPed := nPed + 1
+    ConOut("Incluido com sucesso! Pedido: " + cDoc)
+    
+    return { .T., cDoc }
+  Else
+    cArquivo := FwTimeStamp() + "_mercado_livre_execauto.txt"
+    MostraErro( GetSrvProfString("Startpath","") , cArquivo )
+    cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArquivo )
+
+      
+    return { .F., cMsg }
+  EndIf
+
+Return { .F., "" }
+
+/*/{Protheus.doc} unlockOrderItems
+  (long_description)
+  @author user
+  @since 31/07/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method unlockOrderItems(cNumeroPedido) class IntegraNF
+
+  Local aPedItens := {}
+
+  SC9->(dbSetOrder(1))
+  SC6->(dbsetorder(1))
+
+  //Realizo liberacao de credito/estoque/wms
+  If SC6->(DbSeek(cSeek_ := xFilial("SC6")+ cNumeroPedido))
+    While SC6->(!EOF()) .And. SC6->C6_FILIAL + SC6->C6_NUM == cSeek_
+
+      If SC9->(dbseek(xFilial("SC9")+SC6->C6_NUM+SC6->C6_ITEM))
+        recLock("SC9",.F.)
+          SC9->C9_BLCRED	:= "  "
+          SC9->C9_BLEST	:= "  "
+          SC9->C9_BLWMS	:= "  "
+        SC9->(msUnLock())
+      endif
+
+      SC5->(dbSeek(xFilial("SC5") + SC9->C9_PEDIDO))
+			SC6->(dbSeek(xFilial("SC6") + SC9->C9_PEDIDO + SC9->C9_ITEM + SC9->C9_PRODUTO))
+			SE4->(dbSeek(xFilial("SE4") + SC5->C5_CONDPAG))
+			SB1->(dbSeek(xFilial("SB1") + SC6->C6_PRODUTO))
+			SB2->(dbSeek(xFilial("SB2") + SC9->C9_PRODUTO + SC9->C9_LOCAL))
+			SF4->(dbSeek(xFilial("SF4") + SC6->C6_TES))
+			DA3->(dbSeek(xFilial('DA3') + SC5->C5_VEICULO))
+			SA4->(dbSeek(xFilial('DA3') + SC5->C5_TRANSP))
+			SA1->(dbSeek(xFilial('SA1') + SC5->C5_CLIENTE+SC5->C5_LOJACLI))
+
+
+      aAdd(aPedItens, {;
+        SC9->C9_PEDIDO,; 
+        SC9->C9_ITEM,;
+        SC9->C9_SEQUEN,;
+        SC9->C9_QTDLIB,;
+        SC9->C9_PRCVEN,;
+        SC9->C9_PRODUTO,;
+        SF4->F4_ISS == "S",;
+        SC9->(recno()),;
+        SC5->(recno()),;
+        SC6->(recno()),;
+        SE4->(recno()),;
+        SB1->(recno()),;
+        SB2->(recno()),;
+        SF4->(recno())} )
+
+      SC6->(dbskip())
+    EndDo
+  Endif
+
+
+  ::aPvlNfs := aPedItens
+  
+  if ZZ1->ZZ1_LIBPED
+    return .T.
+  endif
+
+
+  // Liberacao de pedido (Rotina Padrão do sistema)
+  Ma410LbNfs(2,@::aPvlNfs,@::aBloqueio)
+
+  //Realizo liberacao de credito/estoque/wms
+  If SC6->(DbSeek(cSeek_ := xFilial("SC6")+ cNumeroPedido))
+        While SC6->(!EOF()) .And. SC6->C6_FILIAL + SC6->C6_NUM == cSeek_
+
+          If SC9->(dbseek(xFilial("SC9")+SC6->C6_NUM+SC6->C6_ITEM))
+              recLock("SC9",.F.)
+                  SC9->C9_BLCRED	:= "  "
+                  SC9->C9_BLEST	:= "  "
+                  SC9->C9_BLWMS	:= "  "
+              SC9->(msUnLock())
+          endif
+
+          SC6->(dbskip())
+      EndDo
+  Endif
+  
+  //-- Checa itens liberados
+  Ma410LbNfs( 1, @::aPvlNfs, @::aBloqueio )
+
+Return ( Empty(::aBloqueio) .and. !Empty(::aPvlNfs) )
+
+/*/{Protheus.doc} invoiceOrder
+  (long_description)
+  @author Leonardo Freitas
+  @since 11/12/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method invoiceOrder(cNumeroPedido) class IntegraNF
+
+  ::cDocumentoNfe := ""
+
+  SD2->( dbSetOrder( 8 ) )
+  if SD2->( dbSeek( xFilial( "SD2" ) + cNumeroPedido ) )
+    ::cDocumentoNfe := SD2->D2_DOC
+  endif
+
+  //É necessário carregar o grupo de perguntas MT460A, se não será executado com os valores default.
+  Pergunte("MT460A",.F.)
+
+  SetFunName("MATA461")
+
+  ::cDocumentoNfe := MaPvlNfs(::aPvlNfs,;
+				   ::cSerieNfe,;
+				   .F. /*lMostraCtb*/,;
+				   .F. /*lAglutCtb*/,;
+				   .F. /*lCtbOnLine*/,;
+				   .F. /*lCtbCusto*/,;
+				   .F. /*lReajuste*/,;
+					0  /*nCalAcrs*/,;
+					0  /*nArredPrcLis*/,;
+				   .F. /*lAtuSA7*/,;
+				   .F. /*lECF*/)
+Return ::cDocumentoNfe
+
+
+/*/{Protheus.doc} getTes
+  (long_description)
+  @author user
+  @since 15/12/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method getTes(cCFOP, cClasFis_) class IntegraNF
+  local cRet := ""
+  cCFOP := SUBSTR(cCFOP,2,3)
+
+  cQuery := " SELECT F4_CODIGO FROM " + RetSqlTab('SF4')
+  cQuery += " WHERE D_E_L_E_T_ = ' '"
+  cQuery += " AND SUBSTR(F4_CF,2,3) = '" + cCFOP + "' "
+  cQuery += " AND F4_TIPO    = 'S'"  //TES DE SAIDA
+  cQuery += " AND F4_DUPLIC  = 'S' " //TEM QUE GERAR DUPLICATA
+  cQuery += " AND F4_ESTOQUE = 'N'"  //NAO PODE MOVIMENTAR ESTOQUE
+  if alltrim(cClasFis_) $ '40,41,60'
+      cQuery += " AND F4_SITTRIB = '" + alltrim(cClasFis_) + "' "
+  endif
+
+  If Select('QRYTES') > 0
+      QRYTES->(DbCloseArea())
+  EndIf
+
+  TcQuery cQuery New Alias 'QRYTES'
+
+  If QRYTES->(!Eof())
+      cRet := QRYTES->F4_CODIGO
+  EndIf
+  QRYTES->( dbCloseArea() )
+
+Return cRet
+
+/*/{Protheus.doc} methodName
+  (long_description)
+  @author user
+  @since 16/12/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method validSerie() class IntegraNF
+    
+    SD9->( dbSetOrder( 1 ) )
+    if !SD9->( dbSeek( cFilAnt + alltrim(::cSerieNfe) ) )
+        recLock("SD9", .T.)
+            SD9->D9_FILIAL := cFilAnt
+            SD9->D9_SERIE := alltrim(::cSerieNfe)
+            SD9->D9_DOC := PADL("1",TAMSX3("F2_DOC")[1],"0")
+        SD9->( msUnlock() )
+    endif
+
+    SX5->( dbSetOrder( 1 ) )
+    if !SX5->( dbSeek( xFilial( "SX5" ) + "SN" + PADR(alltrim(::cSerieNfe),TAMSX3("F2_SERIE")[1]," ") ) )
+        recLock("SX5", .T.)
+            SX5->X5_FILIAL := xFilial( "SX5" )
+            SX5->X5_TABELA := "SN"
+            SX5->X5_CHAVE := alltrim(::cSerieNfe)
+            SX5->X5_DESCRI := alltrim(::cSerieNfe) + '=CTE'
+            SX5->X5_DESCSPA := alltrim(::cSerieNfe) + '=CTE'
+            SX5->X5_DESCENG := alltrim(::cSerieNfe) + '=CTE'
+        SX5->( msUnLock() )
+    endif
+
+Return 
+
+/*/{Protheus.doc} calcImposto
+  (long_description)
+  @author user
+  @since 18/12/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method calcImposto(oObjeto) class IntegraNF
+
+  if oObjeto:hasProperty("baseCalculo")
+    self:_BASEICM  := oObjeto["baseCalculo"]
+  endif
+
+  if oObjeto:hasProperty("aliquota")
+    self:_ALIQICM  := oObjeto["aliquota"]
+  endif
+  
+  if oObjeto:hasProperty("valorInss")
+    self:_VALICM  := oObjeto["valorInss"]
+  endif
+
+  if oObjeto:hasProperty("valorInss")
+    self:_vlrINSS := oObjeto["valorInss"]
+  endif
+
+  if oObjeto:hasProperty("valorIr")
+    self:_vlrIRRF := oObjeto["valorIr"]
+  endif
+
+  if oObjeto:hasProperty("valorPis")
+    self:_nValPis := oObjeto["valorPis"]
+  endif
+  
+  if oObjeto:hasProperty("valorCofins")
+    self:_nValCof := oObjeto["valorCofins"]
+  endif
+  
+  if oObjeto:hasProperty("valorCsll")
+    self:_nValCSL := oObjeto["valorCsll"]
+  endif
+
+Return 

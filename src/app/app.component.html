@@ -8,7 +8,7 @@
   ></po-menu>
 
   <div *ngIf="page==='Dashboard'">
-    <app-dashboard (alterarStatus)="onAlterarStatus($event)" (alterarPage)="onAlterarPage($event)"></app-dashboard>
+    <app-dashboard [acao]="onAlterarPage.bind(this)"></app-dashboard>
   </div>
   <div *ngIf="page==='Monitor'">
     <app-monitor [status]="status"></app-monitor>

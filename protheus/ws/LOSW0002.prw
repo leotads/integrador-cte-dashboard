@@ -3,11 +3,11 @@
 #INCLUDE "TOPCONN.CH"
 #INCLUDE "tbiconn.ch"
 
-WSRESTFUL LOSW0001 DESCRIPTION 'Integrador CTE' FORMAT 'application/json'
-  WSMETHOD POST DESCRIPTION 'Metodo post para gravação da CTE na tabela de integração' WSSYNTAX '/acao/{}'
+WSRESTFUL LOSW0002 DESCRIPTION 'Integrador NFSE' FORMAT 'application/json'
+  WSMETHOD POST DESCRIPTION 'Metodo post para gravação da NFSE na tabela de integração' WSSYNTAX '/acao/{}'
 END WSRESTFUL
 
-WSMETHOD POST WSSERVICE LOSW0001 
+WSMETHOD POST WSSERVICE LOSW0002
 
   Local lRet      := .T.
   Local cData     := self:getContent()
@@ -31,14 +31,14 @@ WSMETHOD POST WSSERVICE LOSW0001
   cAcao_   := ::aURLParms[2]
   cChave_  := ::aURLParms[3]
 */
-  oResponse := postCte(cData)
+  oResponse := postNfse(cData)
 
   self:SetStatus(oResponse['status'])
   self:SetResponse(EncodeUtf8(oResponse:toJson()))
 
 return lRet
 
-/*/{Protheus.doc} postCte
+/*/{Protheus.doc} postNfse
   (long_description)
   @type  Static Function
   @author user
@@ -50,36 +50,16 @@ return lRet
   (examples)
   @see (links_or_references)
 /*/
-Static Function postCte(cData)
+Static Function postNfse(cData)
   Local oResponse := JsonObject():new()
   Local cAcao := ""
-  Local cTipo := ""
+//  Local cTipo := ""
+  Local cXml := ""
   Local oData := JsonObject():new()
 
   oData:fromJson(cData)
 
-  if !oData:HasProperty("type")//empty(cTipo_)
-    oResponse["message"] := "É necessário enviar o tipo do XML!"
-    oResponse["type"] := "error"
-    oResponse["status"] := 400
-
-    return oResponse
-  endif
-
-  Do Case
-  Case oData["type"] == "cte"
-    cTipo := "1"
-  Case oData["type"] == "nfse"
-    cTipo := "2"
-  Otherwise
-    oResponse["message"] := "O tipo (" + alltrim(oData["type"]) + ") não está configurada!"
-    oResponse["type"] := "error"
-    oResponse["status"] := 400
-
-    return oResponse
-  EndCase
-
-  if !oData:HasProperty("action")
+  if !oData:HasProperty("acao")
     oResponse["message"] := "É necessário enviar a ação a ser executada!"
     oResponse["type"] := "error"
     oResponse["status"] := 400
@@ -89,16 +69,16 @@ Static Function postCte(cData)
   endif
 
   Do Case
-  Case oData["action"] == "inclusao"
+  Case oData["acao"] == "inclusao"
     cAcao := "I"
-  Case oData["action"] == "cancelamento"
+  Case oData["acao"] == "cancelamento"
     cAcao := "E"
-  Case oData["action"] == "substituicao"
+  Case oData["acao"] == "substituicao"
     cAcao := "S"
-  Case oData["action"] == "complemento"
+  Case oData["acao"] == "complemento"
     cAcao := "C"
   Otherwise
-    oResponse["message"] := "A ação (" + alltrim(oData["action"]) + ") não está configurada!"
+    oResponse["message"] := "A ação (" + alltrim(oData["acao"]) + ") não está configurada!"
     oResponse["type"] := "error"
     oResponse["status"] := 400
 
@@ -106,44 +86,7 @@ Static Function postCte(cData)
     
   EndCase
 
-  if !oData:HasProperty("key")
-    oResponse["message"] := "É necessário enviar a key no body da requisição!"
-    oResponse["type"] := "error"
-    oResponse["status"] := 400
-    
-    return oResponse
-    
-  endif
 
-  if !oData:HasProperty("data")
-    oResponse["message"] := "É necessário enviar o XML no campo data no body da requisição!"
-    oResponse["type"] := "error"
-    oResponse["status"] := 400
-    
-    return oResponse
-    
-  endif
-
-  if !oData:HasProperty("productId")
-    oResponse["message"] := "É necessário enviar o productId no body da requisição!"
-    oResponse["type"] := "error"
-    oResponse["status"] := 400
-    
-    return oResponse
-    
-  endif
-
-  if existReg(oData["key"], cTipo, cAcao)
-    oResponse["message"] := "Já existe um registro para a chave (" + alltrim(oData["key"]) + ") para essa ação (" + alltrim(cAcao) + ")!"
-    oResponse["type"] := "error"
-    oResponse["status"] := 400
-    
-    return oResponse
-    
-  endif
-
-  cXml := strtran(strtran(oData["data"], Chr(9), ''), Chr(10), '')
-//  cXml := fRemoveCarc(cXml)
 
   begin Transaction
     cCodigo := getSx8Num("ZZ1", "ZZ1_CODIGO")
@@ -156,12 +99,12 @@ Static Function postCte(cData)
       ZZ1->ZZ1_XML   := cXml
       ZZ1->ZZ1_DATA   := dDataBase
       ZZ1->ZZ1_HORA   := Time()
-      ZZ1->ZZ1_CHAVE  := oData["key"]
+      //ZZ1->ZZ1_CHAVE  := oData["key"]
       ZZ1->ZZ1_ACAO   := cAcao
-      ZZ1->ZZ1_TIPO   := cTipo
+      ZZ1->ZZ1_TIPO   := "2"
       ZZ1->ZZ1_STATUS := 'A'
       ZZ1->ZZ1_JSON   := cData
-      ZZ1->ZZ1_CODPRO := oData["productId"]
+      //ZZ1->ZZ1_CODPRO := oData["productId"]
     ZZ1->(MsUnLock())
 
   end Transaction
@@ -170,88 +113,6 @@ Static Function postCte(cData)
   oResponse["type"] := "success"
   oResponse["status"] := 201
 
-/*
-  Do Case
-    Case alltrim(cTipo) $ 'inclusao,cartacorrecao'
-      if existReg(cChave, cTipo)
-        oResponse["message"] := "Chave ("+cChave+") já está cadastrada!"
-        oResponse["type"] := "error"
-        oResponse["status"] := 400
-        
-        return oResponse
-      endif
-
-      cMensagem := popula(cXML, cChave, cTipo)
-
-      //Caso retorne erro ao popular a tabela
-      if !empty(cMensagem)
-        oResponse["message"] := cTipo + ' - acao NAO permitida.'+cMensagem
-        oResponse["type"] := "error"
-        oResponse["status"] := 400
-        
-        return oResponse
-      endif
-
-      oResponse["message"] := cTipo + ' - concluido com sucesso'
-      oResponse["type"] := "success"
-      oResponse["status"] := 201
-
-      return oResponse
-
-    case alltrim(cTipo) $ 'possocancelar,possoinutilizar' 
-
-      lExistReg := ExistReg(cChave, 'inclusao')   
-
-      If !lExistReg
-          oResponse["message"]    := cAcao + ' - acao NAO permitida. Título não está cadastrado no Protheus. '
-          oResponse["type"]       := "error"
-          oResponse["status"]     := 403 
-          return oResponse
-      ElseIf lExistReg .AND. ( QRY->ZZ1_STATUS $ 'A,E' .or. ( QRY->ZZ1_STATUS == 'P' .AND. !validBaixa(cChave) ) )
-          oResponse["message"]    := cAcao + ' - acao permitida'
-          oResponse["type"]       := "sucess"
-          oResponse["status"]     := 201       
-          return oResponse             
-      ElseIf (lExistReg .AND. QRY->ZZ1_STATUS == 'P')
-          oResponse["message"]    := cAcao + ' - acao NAO permitida. Já feita a baixa do titulo. '
-          oResponse["type"]       := "error"
-          oResponse["status"]     := 403          
-          return oResponse                          
-      EndIf 
-      
-    case alltrim(cTipo) $ 'cancelar,inutilizar'
-      
-      if ExistReg(cChave, cTipo)
-
-        cMensagem := popula(cXML,cChave,cAcao)
-        If Empty(cMensagem)
-            oResponse["message"]    := cAcao + ' - concluido com sucesso'
-            oResponse["type"]       := "sucess"
-            oResponse["status"]     := 201
-            return oResponse
-        Else
-            oResponse["type"]       := "error"
-            oResponse["status"]     := 400
-            oResponse["message"]    := cAcao + ' - acao NAO permitida.'+cMensagem
-            return oResponse
-        EndIf
-
-      else 
-        oResponse["type"]       := "error"
-        oResponse["status"]     := 400
-        oResponse["message"]    := "Chave ("+alltrim(cChave)+") já está cadastrada."
-        return oResponse
-      endif
-
-
-    Otherwise
-      oResponse["message"] := "Não existe essa ação disponível!"
-      oResponse["type"] := "error"
-      oResponse["status"] := 403
-      
-      return oResponse
-  EndCase
-  */
 Return oResponse
 
 /*/{Protheus.doc} existReg

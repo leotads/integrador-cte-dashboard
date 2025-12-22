@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 
 import {
@@ -32,8 +31,8 @@ export class AppComponent {
   status: string = "";
 
   readonly menus: Array<PoMenuItem> = [
-    { label: 'Dashboard', action: () => this.onAlterarPage("Dashboard"), icon: 'an an-chart-line', shortLabel: 'Dashboard' },
-    { label: 'Monitor', action: () => this.onAlterarPage("Monitor"), icon: 'an an-monitor', shortLabel: 'Monitor' },
+    { label: 'Dashboard', action: () => this.onAlterarPage("Dashboard", ""), icon: 'an an-chart-line', shortLabel: 'Dashboard' },
+    { label: 'Monitor', action: () => this.onAlterarPage("Monitor", ""), icon: 'an an-monitor', shortLabel: 'Monitor' },
   ];
 
   constructor(
@@ -44,12 +43,17 @@ export class AppComponent {
       this.proAppConfigService.loadAppConfig();
     }
   }
-
+/*
   onAlterarStatus(newStatus: string) {
     this.status = newStatus;
   }
-  onAlterarPage(newPage: string) {
+*/
+  onAlterarPage(newPage: string, status: string) {
+    this.status = status;
     this.page = newPage;
+
+    console.log('status', status)
+    console.log('page', newPage)
   }
 
 }
