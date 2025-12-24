@@ -1,0 +1,78 @@
+{
+	"configurations": [
+		{
+			"type": "totvs_language_web_debug",
+			"request": "launch",
+			"name": "Smart Client Web Debug",
+			"program": "${command:AskForProgramName}",
+			"isMultiSession": true,
+			"enableTableSync": true
+		}
+	],
+	"lastPrograms": [
+		{
+			"label": "sigamdi"
+		},
+		{
+			"args": [
+				"37891",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37892",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37893",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37894",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37895",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37896",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37897",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37898",
+				"A"
+			],
+			"label": "u_LOSF001D"
+		}
+	],
+	"lastProgramExecuted": "u_LOSF001D",
+	"lastProgramArguments": [
+		"37898",
+		"A"
+	]
+}

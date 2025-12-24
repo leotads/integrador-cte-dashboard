@@ -1,0 +1,71 @@
+{
+	"version": "0.2.2",
+	"includes": [
+		""
+	],
+	"permissions": {
+		"authorizationtoken": ""
+	},
+	"connectedServer": {
+		"id": "7tvjxb514zdmjgp9iyec51x6z65pam",
+		"type": "totvs_server_protheus",
+		"name": "LOS HOM",
+		"port": 11411,
+		"address": "transagil202611.protheus.cloudtotvs.com.br",
+		"buildVersion": "7.00.240223P",
+		"secure": true,
+		"includes": [
+			"C:\\Users\\leona\\Documents\\Projetos\\includes"
+		],
+		"environments": [
+			"CJ4AP2_LEONARDO"
+		],
+		"username": "leonardo.freitas",
+		"environment": "CJ4AP2_LEONARDO",
+		"token": "djM6N3R2anhiNTE0emRtamdwOWl5ZWM1MXg2ejY1cGFtOjE6dHJhbnNhZ2lsMjAyNjExLnByb3RoZXVzLmNsb3VkdG90dnMuY29tLmJyOjExNDExOjE6Ny4wMC4yNDAyMjNQOjM=:djE6Q0o0QVAyX0xFT05BUkRPOmxlb25hcmRvLmZyZWl0YXM6NEtsK25ZZXRSaGs0aUNScWdPc2hOVE5sRHl4UzU5dkxCTUpRUVd4ZjlHcz0=|djI6MTc2NjQyNzIzOTowOjE6MQ==.Uctm5Ny+A0Qc72I6qa9ii8RolM2PXScxmUxALY4vets9eQedJ6lTJh9EvMDg+1liujnz6n+wLG22lGtSXbBnPFEPwwU3k4iGLj7IrKF71jovZ33dy7DtmJ7nQHVWc4/MWsLsa9axLaRCSHgru6qmHYBnHxgXGB+fakBmKoJBODZ5XkLsjNJ8MXSOC1olPLgAYYD/76rB69gWKRuv2IB8A0DLaM1xBjVDL7uXrKZtyW/0ZhQFiiNeuEHXLAhzZpODUtsLWVz9q06nMXD7IAmMoCxtQurqrNF2MDkU2/7eThybt1pYaIaegm9TYl/YXLsqPStBGteoD9bhC2WH2ZxTlQ==",
+		"informations": {
+			"permissions": [],
+			"errorMessage": "",
+			"environmentDetectedType": "totvs_server_protheus",
+			"serverDetectedType": "totvs_server_protheus"
+		},
+		"patchGenerateDir": "c:\\Users\\leona\\Documents\\Projetos\\Patchs"
+	},
+	"configurations": [
+		{
+			"id": "7tvjxb514zdmjgp9iyec51x6z65pam",
+			"type": "totvs_server_protheus",
+			"name": "LOS HOM",
+			"port": 11411,
+			"address": "transagil202611.protheus.cloudtotvs.com.br",
+			"buildVersion": "7.00.240223P",
+			"secure": true,
+			"includes": [
+				"C:\\Users\\leona\\Documents\\Projetos\\includes"
+			],
+			"environments": [
+				"CJ4AP2_LEONARDO"
+			],
+			"username": "leonardo.freitas",
+			"environment": "CJ4AP2_LEONARDO",
+			"token": "djM6N3R2anhiNTE0emRtamdwOWl5ZWM1MXg2ejY1cGFtOjE6dHJhbnNhZ2lsMjAyNjExLnByb3RoZXVzLmNsb3VkdG90dnMuY29tLmJyOjExNDExOjE6Ny4wMC4yNDAyMjNQOjM=:djE6Q0o0QVAyX0xFT05BUkRPOmxlb25hcmRvLmZyZWl0YXM6NEtsK25ZZXRSaGs0aUNScWdPc2hOVE5sRHl4UzU5dkxCTUpRUVd4ZjlHcz0=|djI6MTc2NjQyNzIzOTowOjE6MQ==.Uctm5Ny+A0Qc72I6qa9ii8RolM2PXScxmUxALY4vets9eQedJ6lTJh9EvMDg+1liujnz6n+wLG22lGtSXbBnPFEPwwU3k4iGLj7IrKF71jovZ33dy7DtmJ7nQHVWc4/MWsLsa9axLaRCSHgru6qmHYBnHxgXGB+fakBmKoJBODZ5XkLsjNJ8MXSOC1olPLgAYYD/76rB69gWKRuv2IB8A0DLaM1xBjVDL7uXrKZtyW/0ZhQFiiNeuEHXLAhzZpODUtsLWVz9q06nMXD7IAmMoCxtQurqrNF2MDkU2/7eThybt1pYaIaegm9TYl/YXLsqPStBGteoD9bhC2WH2ZxTlQ==",
+			"informations": {
+				"permissions": [],
+				"errorMessage": "",
+				"environmentDetectedType": "totvs_server_protheus",
+				"serverDetectedType": "totvs_server_protheus"
+			},
+			"patchGenerateDir": "c:\\Users\\leona\\Documents\\Projetos\\Patchs"
+		}
+	],
+	"savedTokens": [
+		[
+			"7tvjxb514zdmjgp9iyec51x6z65pam:CJ4AP2_LEONARDO",
+			{
+				"id": "7tvjxb514zdmjgp9iyec51x6z65pam",
+				"token": "djM6N3R2anhiNTE0emRtamdwOWl5ZWM1MXg2ejY1cGFtOjE6dHJhbnNhZ2lsMjAyNjExLnByb3RoZXVzLmNsb3VkdG90dnMuY29tLmJyOjExNDExOjE6Ny4wMC4yNDAyMjNQOjM=:djE6Q0o0QVAyX0xFT05BUkRPOmxlb25hcmRvLmZyZWl0YXM6NEtsK25ZZXRSaGs0aUNScWdPc2hOVE5sRHl4UzU5dkxCTUpRUVd4ZjlHcz0=|djI6MTc2NjQyNzIzOTowOjE6MQ==.Uctm5Ny+A0Qc72I6qa9ii8RolM2PXScxmUxALY4vets9eQedJ6lTJh9EvMDg+1liujnz6n+wLG22lGtSXbBnPFEPwwU3k4iGLj7IrKF71jovZ33dy7DtmJ7nQHVWc4/MWsLsa9axLaRCSHgru6qmHYBnHxgXGB+fakBmKoJBODZ5XkLsjNJ8MXSOC1olPLgAYYD/76rB69gWKRuv2IB8A0DLaM1xBjVDL7uXrKZtyW/0ZhQFiiNeuEHXLAhzZpODUtsLWVz9q06nMXD7IAmMoCxtQurqrNF2MDkU2/7eThybt1pYaIaegm9TYl/YXLsqPStBGteoD9bhC2WH2ZxTlQ=="
+			}
+		]
+	],
+	"lastConnectedServer": "7tvjxb514zdmjgp9iyec51x6z65pam"
+}

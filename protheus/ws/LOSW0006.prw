@@ -3,11 +3,11 @@
 #INCLUDE "TOPCONN.CH"
 #INCLUDE "tbiconn.ch"
 
-WSRESTFUL LOSW0002 DESCRIPTION 'Integrador NFSE' FORMAT 'application/json'
+WSRESTFUL LOSW0006 DESCRIPTION 'Integrador NFSE' FORMAT 'application/json'
   WSMETHOD POST DESCRIPTION 'Metodo post para gravação da NFSE na tabela de integração' WSSYNTAX '/acao/{}'
 END WSRESTFUL
 
-WSMETHOD POST WSSERVICE LOSW0002
+WSMETHOD POST WSSERVICE LOSW0006
 
   Local lRet      := .T.
   Local cData     := self:getContent()
