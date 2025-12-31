@@ -1,5 +1,32 @@
 import { Component, inject, Input, ViewChild } from '@angular/core';
-import { PoDialogModule, PoDialogService, PoLoadingModule, PoNotificationService, PoPageModule, PoTableAction, PoTableColumn, PoTableColumnSort, PoTableModule, PoModalModule, PoModalAction, PoModalComponent, PoButtonModule, PoFieldModule, PoDynamicModule, PoDynamicFormField, ForceBooleanComponentEnum, PoDividerModule, PoContextTabsModule, PoTabsModule, PoTab } from '@po-ui/ng-components';
+import { 
+  PoDialogModule,
+  PoDialogService,
+  PoLoadingModule,
+  PoNotificationService,
+  PoPageModule,
+  PoTableAction,
+  PoTableColumn,
+  PoTableColumnSort,
+  PoTableModule,
+  PoModalModule,
+  PoModalAction,
+  PoModalComponent,
+  PoButtonModule,
+  PoFieldModule,
+  PoDynamicModule,
+  PoDynamicFormField,
+  ForceBooleanComponentEnum,
+  PoDividerModule,
+  PoContextTabsModule,
+  PoTabsModule,
+  PoTab,
+  PoDisclaimerGroupModule,
+  PoDisclaimerModule,
+  PoPageSlideComponent,
+  PoDisclaimer,
+  PoDisclaimerGroupRemoveAction
+} from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { ProtheusService } from '../../services/protheus.service';
 import { FormsModule } from '@angular/forms';
@@ -21,16 +48,20 @@ import { CommonModule } from '@angular/common';
     PoDynamicModule,
     PoDividerModule,
     PoContextTabsModule,
-    PoTabsModule
+    PoTabsModule,
+    PoDisclaimerGroupModule
 ],
   templateUrl: './monitor.component.html',
   styleUrls: ['./monitor.component.css']
 })
 export class MonitorComponent {
 
-  @Input() status!: string;
+  @Input() filters!: { [key: string]: any };
 
   @ViewChild(PoModalComponent, { static: true }) poModal!: PoModalComponent;
+
+  @ViewChild(PoPageSlideComponent, { static: false })
+  poPageSlide!: PoPageSlideComponent;
 
   public bluetooth = true;
 
@@ -73,8 +104,10 @@ export class MonitorComponent {
   isLoadingDialog: boolean = true;
   pagination: object = {page: 1, pageSize: 10}
   log: any = {};
-  filtered: boolean = false;
   tabsFilters: Array<any> = [];
+  filtered: boolean = false;
+//  filters: any = {};
+  filtersDisclaimber: Array<PoDisclaimer> = [];
   fieldsFilter: Array<PoDynamicFormField> = [
     {
       property: 'chave',
@@ -90,46 +123,46 @@ export class MonitorComponent {
     },
     {
       property: 'tomador',
-      label: 'Tomador',
+      label: 'CPF/CNPJ Tomador',
       optional: true,
       required: false,
       gridColumns: 12,
       placeholder: "Tomador do serviço"
     },
     {
-      property: 'Emissaode',
-      label: 'Emissão De',
+      property: 'dataDe',
+      label: 'Data De',
       type: 'date',
       optional: true,
       gridColumns: 6
     },
     {
-      property: 'Emissaoate',
-      label: 'Emissão Até',
+      property: 'dataAte',
+      label: 'Data Até',
       optional: true,
       type: 'date',
       gridColumns: 6
     },
     {
-      property: 'seriede',
+      property: 'serieDe',
       label: 'Série De',
       optional: true,
       gridColumns: 6
     },
     {
-      property: 'serieate',
+      property: 'serieAte',
       label: 'Série Até',
       optional: true,
       gridColumns: 6
     },
     {
-      property: 'numerode',
+      property: 'numeroDe',
       label: 'Número De',
       optional: true,
       gridColumns: 6
     },
     {
-      property: 'numeroate',
+      property: 'numeroAte',
       label: 'Número Até',
       optional: true,
       gridColumns: 6
@@ -208,8 +241,21 @@ export class MonitorComponent {
   }
 
   salvar() {
-    this.poNotification.success('Formulário enviado com sucesso!');
-    console.log(this.value);
+    this.filters = this.value;
+    this.items = [];
+    this.pagination = {page: 1, pageSize: 10};
+    this.filtersDisclaimber = [];
+
+    Object
+      .entries(this.filters)
+      .forEach(([key, value ]) => {
+        if (value) {
+          this.filtersDisclaimber.push({ value: `${key}: ${value}` })
+        }
+      })
+
+    this.poPageSlide.close();
+    this.onLoading();
   }
 
   onLoading() {
@@ -217,7 +263,7 @@ export class MonitorComponent {
 
     this.protheusService.getProtheus(
       'getDocuments',
-      JSON.stringify({ ...this.pagination, status: this.status })
+      JSON.stringify({ ...this.pagination, filters: this.filters })
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
@@ -365,8 +411,47 @@ export class MonitorComponent {
     this.poModal.close();
   }
 
-  onClick(tab: PoTab) {}
-  onClose(tab: PoTab) {}
+  changeDisclaimber() {
+
+    this.filters = {};
+    this.pagination = {page: 1, pageSize: 10};
+
+    this.filtersDisclaimber.forEach(item => {
+      const [key, val] = item.value.split(':').map((s: any) => s.trim());
+      if (key === "status" || key === "tipo") {
+        this.filters[key] = val.split(',').map((s: any) => s.trim());
+      } else {
+        this.filters[key] = val;
+      }
+    });
+
+    this.onLoading();
+  }
+
+  removeDisclaimbers(disclaimber: PoDisclaimerGroupRemoveAction) {
+
+    this.filters = {};
+    this.pagination = {page: 1, pageSize: 10};
+    
+    
+    disclaimber.currentDisclaimers.forEach(item => {
+      const [key, val] = item.value.split(':').map((s: any) => s.trim());
+      if (key === "status" || key === "tipo") {
+        this.filters[key] = val.split(',').map((s: any) => s.trim());
+      } else {
+        this.filters[key] = val;
+      }
+    });
+    
+    this.onLoading();
+  }
+  
+  removeAll() {
+    this.filters = {};
+    this.pagination = {page: 1, pageSize: 10};
+    
+    this.onLoading();
+  }
 
 
 }

@@ -39,11 +39,6 @@ User Function LOSF0001()
         Return
     Endif
 
-    _cQuery := "  "
-
-
-    _cQCorpo := '%' + _cQuery  + '%'
-
     IF SELECT ("TMPZZ1") > 0
         TMPZZ1->( dbCloseArea( ) )
     ENDIF	
@@ -58,8 +53,6 @@ User Function LOSF0001()
            AND ZZ1.ZZ1_STATUS = 'A'
                 
     EndSql
-    
-    //MEMOWRITE("C:\TEMP\LOSF0001.sql",GETLASTQUERY()[2]) 	
 
     DbSelectArea('TMPZZ1')
     TMPZZ1->(DbGoTop())
@@ -515,6 +508,8 @@ Static Function incluiCTE(cTipo_)
                 ZZ1->ZZ1_LOJA   := SA1->A1_LOJA
             ZZ1->(MsUnLock())
         EndIf 
+
+        
         
         oTomador := JsonObject():new()
         oTomador["cgc"] := ZZ1->ZZ1_CGC 
@@ -645,6 +640,16 @@ Static Function ProcessaCTE( cTipo )
         //Posiona o registro para processamento
 //        ZZ1->(DbGoTo(nRecZZ1))
         cXml := ZZ1->ZZ1_XML
+        cJson := ZZ1->ZZ1_JSON
+
+        if !empty(cJson)
+            oData := JsonObject():new()
+            oData:fromJson(cJson) 
+
+            if oData:hasProperty("minutas")
+                aMinutas := oData["minutas"]
+            endif
+        endif
         
         //Valida o cadastro do tipo CTE no cadastro de tipos de titulos do financeiro
         If !  SX5->(DbSeek(xFilial('SX5') +  '05' + 'CTE'))
@@ -803,8 +808,17 @@ Static Function ProcessaCTE( cTipo )
             cChvOld := oCTE:_CTEPROC:_CTE:_INFCTE:_INFCTENORM:_INFCTESUB:_CHCTE:TEXT
         endif
 
-        cCodProd := ""
+        cClasProd := getClasPro(ZZ1->ZZ1_CODPRO)
 
+        if empty(cClasProd)
+            varError:genCode := 001
+            varError:description := "Classificacao do produto nao encontrado."
+            throw varError 
+        endif
+
+        cCodProd := PADR(SuperGetMv('MS_PRODFRE',.F., 'FRETE          '), Len(SB1->B1_COD) )
+
+/*
         //Caso for CTE de complemento irá pegar o produto do CTE anterior
         if cTPCTE == "1"
             if !AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_INFCTECOMP, "_CHCTE")
@@ -844,6 +858,7 @@ Static Function ProcessaCTE( cTipo )
             endif
 
         endif
+*/
 
         //Pega informações de ICMS
         cClasFis := ""
@@ -1543,6 +1558,7 @@ Static Function ProcCte(aVends)
         SF2->(dbSetOrder(1))
         SF2->(dbgoto(nRecNoSF2))
         RecLock("SF2", .F.)
+            SF2->F2_CLASPRO := cClasProd
             SF2->F2_TPCTEGW := cTPCTE
             SF2->F2_TPSERGW := cTPSERV
             SF2->F2_CHAVOLD := cChvOld
@@ -1553,6 +1569,8 @@ Static Function ProcCte(aVends)
             SF2->F2_PCBS    := nPCBS
             SF2->F2_VCBS    := nVCBS
         SF2->( msUnLock() )
+        
+        procMinutas(SF2->F2_FILIAL + SF2->F2_DOC + SF2->F2_SERIE + SF2->F2_CLIENTE + SF2->F2_LOJA + SF2->F2_FORMUL + SF2->F2_TIPO)
 
         RecLock('SE1', .F.)
             SE1->E1_PREFIXO  := cYNumSer
@@ -1572,12 +1590,37 @@ Static Function ProcCte(aVends)
             ZZ1->ZZ1_SERCTE := cYNumSer
         ZZ1->(MsUnLock())
 
+
         //Posiciona o SF2 para montar os dados que serao usados para as tabelas
         // SF2->(DbGoTo(nRecNoSF2))        
         ProcFis(.T.,nRecNoSF2)    
     EndIf
 
 Return cMensagem
+
+/*/{Protheus.doc} procMinutas
+    (long_description)
+    @type  Static Function
+    @author user
+    @since 30/12/2025
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function procMinutas(cChvSF2)
+    local i := 0
+
+    for i := 1 to len(aMinutas)
+        recLock("ZZ4", .T.)
+            ZZ4->ZZ4_FILIAL := xFilial("ZZ4")
+            ZZ4->ZZ4_CODSF2 := cChvSF2
+            ZZ4->ZZ4_CHVNF   := aMinutas[i]["chave"]
+        ZZ4->( msUnLock() )
+    next
+Return 
 
 /*/{Protheus.doc} deleteSe1
     (long_description)
@@ -1848,7 +1891,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         aAdd(aRet, {'FT_CONTA'  , GetConta()})
 
         aAdd(aRet, {'FT_ALIQCPB', nAliqCPB })
-        aAdd(aRet, {'FT_VALCPB' , Round(SF2->F2_VALMERC * 1.5 / 100,2)})
+        aAdd(aRet, {'FT_VALCPB' , Round(SF2->F2_VALMERC * (nAliqCPB / 100),2)})
         aAdd(aRet, {'FT_BASECPB', SF2->F2_VALMERC })        
 
         aAdd(aRet, {'FT_CTIPI' , SuperGetMv('MS_CTIPI', .F., '53') })        
@@ -2578,3 +2621,51 @@ Static Function getProdCte(cChvOld)
 
     
 Return aRetorno
+
+/*/{Protheus.doc} getClasPro
+    (long_description)
+    @type  Static Function
+    @author user
+    @since 26/12/2025
+    @version version
+    @param param_name, param_type, param_descr
+    @return return_var, return_type, return_description
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function getClasPro(cCodProd)
+
+    default cCodProd := ""
+
+    if Empty(cCodProd)
+        return cCodProd
+    endif
+
+    BeginSql alias 'QRYSX5'
+        SELECT count(*) quantidade
+          FROM %table:SX5% SX5
+         WHERE SX5.X5_FILIAL = %xFilial:SX5%
+           AND X5_TABELA = 'CP'
+           AND X5_DESCRI = %exp:alltrim(cCodProd)%
+           AND SX5.D_E_L_E_T_ <> '*'
+    EndSql
+
+    if QRYSX5->quantidade > 0
+
+        cCodigo := getSx8Num("SX5", "X5_CODIGO")
+
+        recLock('SX5', .T.)
+            SX5->X5_FILIAL := xFilial("SX5")
+            SX5->X5_TABELA := 'CP'
+            SX5->X5_CODIGO := cCodigo
+            SX5->X5_DESCRI := cCodProd
+            SX5->X5_DESCSPA := cCodProd
+            SX5->X5_DESCENG := cCodProd
+        SX5->(msUnlock())
+        ConfirmSx8()
+    endif 
+
+    QRYSX5->(dbclosearea())
+    
+Return cCodProd

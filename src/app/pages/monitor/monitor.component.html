@@ -1,27 +1,19 @@
 <po-page-default>
   <div class="po-row po-mb-1" style="justify-content: space-between; align-items: center;">
-    <div>
-      <div class="po-font-text-large-bold">Filtros: </div>
-      <po-context-tabs #poTab p-size="small">
-        <po-tab
-          *ngFor="let tab of tabsFilters; let i = index"
-          [p-active]="tab.active"
-          [p-disabled]="tab.disabled"
-          [p-hide]="tab.hide"
-          [p-hide-close]="tab.hideClose"
-          [p-label]="tab.label"
-          (p-click)="onClick(tab)"
-          (p-close-tab)="onClose(tab)"
-        >
-          <div class="po-font-subtitle">Tab Content {{ i }}</div>
-        </po-tab>
-      </po-context-tabs>
+    <div class="po-md-11">
+      <po-disclaimer-group
+        [p-disclaimers]="filtersDisclaimber"
+        p-title="Filtros"
+        (p-remove)="removeDisclaimbers($event)"
+        (p-remove-all)="removeAll()"
+      >
+      </po-disclaimer-group>
     </div>
-    <div>
+    <div class="po-md-1">
       <po-button 
         [p-icon]="filtered ? 'an-fill an-funnel' : 'an an-funnel'"
         p-label="Filtrar" 
-        (p-click)="pageSlide.open()"
+        (p-click)="poPageSlide.open()"
       ></po-button>
     </div>
   </div>

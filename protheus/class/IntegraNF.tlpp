@@ -19,15 +19,6 @@ Class IntegraNF
   public data aPvlNfs   as object
   public data aBloqueio as object
 
-  public data _BASEICM as numeric
-  public data _ALIQICM as numeric
-  public data _VALICM as numeric
-  public data _vlrINSS as numeric
-  public data _vlrIRRF as numeric
-  public data _nValPis as numeric
-  public data _nValCof as numeric
-  public data _nValCSL as numeric
-
   public method new()
   public method integrar()
 
@@ -39,6 +30,8 @@ Class IntegraNF
   private Method validSerie()
   private Method calcImposto() 
   private Method getNatureza()
+  private Method setEmpresa()
+  private Method getClasPro()
 
 EndClass
 
@@ -70,6 +63,30 @@ Method integrar(oPedido, nRecno_) class IntegraNF
 
   TRY
 
+    if !oPedido:hasProperty("prestador")
+      varError:genCode := 001
+      varError:description := "Tag 'prestador' não localizado no json!"
+      throw varError
+    endif
+
+    if !oPedido["prestador"]:hasProperty("cgc")
+      varError:genCode := 001
+      varError:description := "Tag 'cgc' não localizado no json!"
+      throw varError
+    endif
+
+    if empty(oPedido["prestador"]["cgc"])
+      varError:genCode := 001
+      varError:description := "CNPJ da empresa não pode ser vazio!"
+      throw varError 
+    endif
+
+    if !::setEmpresa(oPedido["prestador"]["cgc"])
+      varError:genCode := 001
+      varError:description := "Não foi possível setar a empresa para o CNPJ: " + alltrim(oPedido["prestador"]["cgc"]) + "!"
+      throw varError
+    endif
+
     if !oPedido:hasProperty("serieDocumento")
       varError:genCode := 001
       varError:description := "Tag 'serieDocumento' não localizado no json!"
@@ -85,7 +102,7 @@ Method integrar(oPedido, nRecno_) class IntegraNF
 
     if !aCliente[1]
       varError:genCode := 001
-      varError:description := aClient[2]
+      varError:description := aCliente[2]
       throw varError
     endif
 
@@ -122,13 +139,14 @@ Method integrar(oPedido, nRecno_) class IntegraNF
 
     self:invoiceOrder(aPedido_[2])
 
-    self:calcImposto(oObjeto := oPedido, aCliente := aCliente)
 
     if empty(self:cDocumentoNfe)
       varError:genCode := 005
       varError:description := "Não foi possí­vel faturar o pedido de venda!"
       throw varError
     endif
+
+    self:calcImposto(oObjeto := oPedido, aCliente := aCliente)
 
     recLock( "ZZ1", .F. )
       ZZ1->ZZ1_STATUS := "P"
@@ -202,6 +220,12 @@ Method findOrCreateClient(oObjeto) class IntegraNF
 //  local nOpcAuto := 3
 
   Private lMsErroAuto := .F.
+
+  if oObjeto["cliente"]:hasProperty("cgc")
+    cCGC := oObjeto["cliente"]["cgc"]
+  else 
+    return { .F., "É necessário enviar o cpf/cnpj do cliente!" }
+  endif
 
   if oObjeto["cliente"]:hasProperty("cgc")
     cCGC := oObjeto["cliente"]["cgc"]
@@ -284,6 +308,48 @@ Method findOrCreateClient(oObjeto) class IntegraNF
   SA1->( dbSetOrder(3) )
   if SA1->( dbSeek( xFilial( "SA1" ) + cCGC ) )
 
+    recLock( "SA1", .F. )
+      
+    if oObjeto:hasProperty('valorIssRetido')
+      if oObjeto["valorIssRetido"] > 0
+        SA1->A1_RECISS := "1"
+        SA1->A1_INCISS := "S"
+      else
+        SA1->A1_RECISS := "2"
+        SA1->A1_INCISS := "N"
+      endif
+    endif 
+
+    if oObjeto:hasProperty('valorIRRF')
+      if oObjeto["valorIRRF"] > 0
+        SA1->A1_RECIRRF := "1"
+      else
+        SA1->A1_RECIRRF := "2"
+      endif
+    endif 
+
+    if oObjeto:hasProperty('valorPIS')
+      SA1->A1_RECPIS := IIF(oObjeto["valorPIS"] > 0, "S", "N" )
+    endif 
+
+    if oObjeto:hasProperty('valorCOFINS')
+      if oObjeto["valorCOFINS"] > 0
+        SA1->A1_RECCOFI := "S"
+      else 
+        SA1->A1_RECCOFI := "N"
+      endif
+    endif 
+
+    if oObjeto:hasProperty('valorCSLL')
+      SA1->A1_RECCSLL := IIF(oObjeto["valorCSLL"] > 0, "S", "N" )
+    endif 
+
+    if oObjeto:hasProperty('valorINSS')
+      SA1->A1_RECINSS := IIF(oObjeto["valorINSS"] > 0, "S", "N" )
+    endif 
+    
+    SA1->( msUnLock() )
+
     return { .T., SA1->A1_COD, SA1->A1_LOJA }
 
   endif
@@ -317,11 +383,60 @@ Method findOrCreateClient(oObjeto) class IntegraNF
   oSA1Mod:setValue("A1_DDD",        Substr(cCodTel,1,2)        ) // DDD            
   oSA1Mod:setValue("A1_TEL",       Substr(cCodTel,3,TAMSX3("A1_TEL")[1])   ) // Fone                 
   oSA1Mod:setValue("A1_PESSOA",    IIF(LEN(cCGC) == 14, "J", "F")  ) // Tipo Pessoa
-  oSA1Mod:setValue("A1_INCISS", "N" )
   oSA1Mod:setValue("A1_CODPAIS", "01058" )
   oSA1Mod:setValue("A1_CDRDES", cCodRegiao )
 
-  oSA1Mod:setValue("A1_INCISS", "S" )
+  //oSA1Mod:setValue("A1_INCISS", "1" )
+
+  if oObjeto:hasProperty('valorIssRetido')
+    if oObjeto["valorIssRetido"] > 0
+      oSA1Mod:setValue("A1_INCISS", "S" )
+      oSA1Mod:setValue("A1_RECISS", "1" )
+    else
+      oSA1Mod:setValue("A1_INCISS", "N" )
+      oSA1Mod:setValue("A1_RECISS", "2" )
+    endif
+  endif 
+
+  if oObjeto:hasProperty('valorIRRF')
+    if oObjeto["valorIRRF"] > 0
+      oSA1Mod:setValue("A1_RECIRRF", "1" )
+    else
+      oSA1Mod:setValue("A1_RECIRRF", "2" )
+    endif
+  endif 
+
+  if oObjeto:hasProperty('valorPIS')
+    if oObjeto["valorPIS"] > 0
+      oSA1Mod:setValue("A1_RECPIS", "S" )
+    else
+      oSA1Mod:setValue("A1_RECPIS", "N" )
+    endif
+  endif 
+
+  if oObjeto:hasProperty('valorCOFINS')
+    if oObjeto["valorCOFINS"] > 0
+      oSA1Mod:setValue("A1_RECCOFI", "S" )
+    else
+      oSA1Mod:setValue("A1_RECCOFI", "N" )
+    endif
+  endif 
+
+  if oObjeto:hasProperty('valorCSLL')
+    if oObjeto["valorCSLL"] > 0
+      oSA1Mod:setValue("A1_RECCSLL", "S" )
+    else
+      oSA1Mod:setValue("A1_RECCSLL", "N" )
+    endif
+  endif 
+
+  if oObjeto:hasProperty('valorINSS')
+    if oObjeto["valorINSS"] > 0
+      oSA1Mod:setValue("A1_RECINSS", "S" )
+    else
+      oSA1Mod:setValue("A1_RECINSS", "N" )
+    endif
+  endif 
 
   //Se conseguir validar as informações
   If oModel:VldData()
@@ -367,7 +482,7 @@ Method findOrCreateClient(oObjeto) class IntegraNF
   else 
 
     ConfirmSX8()
-    aRetorno_ := { .T., cDoc, "01" }  
+    aRetorno_ := { .T., SA1->A1_COD, SA1->A1_LOJA }  
 
   EndIf
 
@@ -387,8 +502,9 @@ Return aRetorno_
   /*/
 Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   
-  Local _cNatureza := ''//Alltrim(SuperGetMv("MS_NATCTE",.F.,"110101"))
+  Local _cNatureza := Alltrim(SuperGetMv("MS_NATNFS",.F.,"010102"))
   Local cTes := '512'
+  local dEmissao := ddatabase
 //  Local cCfop := ""
 //  Local nPesoBruto := 0
 
@@ -413,6 +529,13 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   if !oPedido["servico"]:hasProperty("codigo")
     return { .F., "Tag 'codigo' do servico não localizado no json!" }
   endif
+
+  if oPedido:hasProperty("emissao")
+    if !empty(oPedido["emissao"])
+      aData := strtokarr(oPedido["emissao"], "/")
+      dEmissao := sToD( aData[3] + aData[2] + aData[1] )
+    endif
+  endif
 /*
   if oPedido:hasProperty("codigoCfop")
     cCfop := alltrim(oPedido["codigoCfop"])
@@ -435,8 +558,8 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   if empty(cTes)
     return { .F., 'TES nao localizada para o CFOP ' + cCFOP }
   endif
-*/
 
+*/
   _cNatureza := ::getNatureza(oPedido := oPedido)
 
   SB1->( dbSetOrder( 1 ) )
@@ -475,7 +598,7 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   aadd(aCabec, {"C5_CLIENTE", aClient[2]  , Nil})
   aadd(aCabec, {"C5_LOJACLI", aClient[3] , Nil})
   aadd(aCabec, {"C5_LOJAENT", aClient[3] , Nil})
-  aadd(aCabec, {"C5_EMISSAO", ddatabase, nil })
+  aadd(aCabec, {"C5_EMISSAO", dEmissao, nil })
   aadd(aCabec, {"C5_CONDPAG", cCond, Nil})                
   aadd(aCabec, {"C5_TIPOCLI", SA1->A1_TIPO, Nil})                
   aadd(aCabec, {"C5_CLASFIS", POSICIONE("SF4", 1, xFilial("SF4") + cTes, "F4_CSTISS"), Nil}) 
@@ -716,9 +839,9 @@ Method validSerie() class IntegraNF
             SX5->X5_FILIAL := xFilial( "SX5" )
             SX5->X5_TABELA := "SN"
             SX5->X5_CHAVE := alltrim(self:cSerieNfe)
-            SX5->X5_DESCRI := alltrim(self:cSerieNfe) + '=CTE'
-            SX5->X5_DESCSPA := alltrim(self:cSerieNfe) + '=CTE'
-            SX5->X5_DESCENG := alltrim(self:cSerieNfe) + '=CTE'
+            SX5->X5_DESCRI := alltrim(self:cSerieNfe) + '=NFS'
+            SX5->X5_DESCSPA := alltrim(self:cSerieNfe) + '=NFS'
+            SX5->X5_DESCENG := alltrim(self:cSerieNfe) + '=NFS'
         SX5->( msUnLock() )
     endif
 
@@ -734,12 +857,41 @@ Return
   /*/
 Method calcImposto(oObjeto, aCliente) class IntegraNF
 
+  local dEmissao := ddatabase 
+  local cClasProd := ""
+  Local cAtivCPB   := SuperGetMv('MS_ATIVCPB',.F., '00000140')
+  Local nAliqCPB := SuperGetMv('MS_ALIQCPB', .F., 1.5)
+
+  if oObjeto:hasProperty("emissao")
+    if !empty(oObjeto["emissao"])
+      aData := strtokarr(oObjeto["emissao"], "/")
+      dEmissao := sToD( aData[3] + aData[2] + aData[1] )
+    endif
+  endif
+
+  if oObjeto:hasProperty("productId")
+    cClasProd := ::getClasPro(oObjeto["productId"])
+  endif
+
   //Altera informações de impostos na SF2 
   SF2->( dbSetOrder( 1 ) )
-  if SF2->(dbSeek(xFilial("SF2") + self:cDocumentoNfe + self:cSerieNfe + aCliente[2] + aCliente[3]))
+  if SF2->(dbSeek(xFilial("SF2") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(aCliente[2]),TAMSX3("A1_COD")[1]," ") + aCliente[3]))
     recLock("SF2", .F.)
+      SF2->F2_ESPECIE := "NFS"
+      SF2->F2_CLASPRO := cClasProd
+
+      SF2->F2_EMISSAO := dEmissao
+
       SF2->F2_BASEISS := oObjeto["baseISS"]
       SF2->F2_VALISS := oObjeto["valorISS"]
+
+      if oObjeto:hasProperty('valorIssRetido')
+        if oObjeto["valorIssRetido"] > 0
+          SF2->F2_RECISS := "1"
+        else
+          SF2->F2_RECISS := "2"
+        endif
+      endif
       
       SF2->F2_BASEINS := oObjeto["baseINSS"]
       SF2->F2_VALINSS := oObjeto["valorINSS"]
@@ -755,14 +907,48 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
 
       SF2->F2_BASEIRR := oObjeto["baseIRRF"]
       SF2->F2_VALIRRF := oObjeto["valorIRRF"]
+
+      
     SF2->( msUnlock() )
+  endif
+
+  SD2->( dbSetOrder( 3 ) )
+  if SD2->(dbSeek(xFilial("SD2") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("D2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("D2_SERIE")[1]," ") + PADR(alltrim(aCliente[2]),TAMSX3("A1_COD")[1]," ") + aCliente[3]))
+    recLock("SD2", .F.)
+
+      SD2->D2_EMISSAO := dEmissao
+
+      SD2->D2_BASEISS := oObjeto["baseISS"]
+      SD2->D2_VALISS := oObjeto["valorISS"]
+      SD2->D2_ALIQISS := ( oObjeto["valorISS"] * 100 ) / oObjeto["baseISS"]
+      
+      SD2->D2_BASEINS := oObjeto["baseINSS"]
+      SD2->D2_VALINS := oObjeto["valorINSS"]
+      SD2->D2_ALIQINS := ( oObjeto["valorINSS"] * 100 ) / oObjeto["baseINSS"]
+
+      SD2->D2_BASECSL := oObjeto["baseCSLL"]
+      SD2->D2_ALQCSL := ( oObjeto["valorCSLL"] * 100 ) / oObjeto["baseCSLL"]
+      SD2->D2_VALCSL := oObjeto["valorCSLL"]
+
+      SD2->D2_BASECOF := oObjeto["baseCOFINS"]
+      SD2->D2_ALQCOF := ( oObjeto["valorCOFINS"] * 100 ) / oObjeto["baseCOFINS"]
+      SD2->D2_VALCOF := oObjeto["valorCOFINS"] 
+
+      SD2->D2_BASEPIS := oObjeto["basePIS"]
+      SD2->D2_ALQPIS := ( oObjeto["valorPIS"] * 100 ) / oObjeto["basePIS"]
+      SD2->D2_VALPIS := oObjeto["valorPIS"]
+
+      SD2->D2_BASEIRR := oObjeto["baseIRRF"]
+      SD2->D2_ALQIRRF := ( oObjeto["valorIRRF"] * 100 ) / oObjeto["baseIRRF"]
+      SD2->D2_VALIRRF := oObjeto["valorIRRF"]
+    SD2->( msUnlock() )
   endif
 
   SE1->( dbSetOrder( 1 ) )
 
   //Encontra o titulo da nota fiscal de serviço para fazer os ajustes nos campos de impostos
-  if SE1->(dbSeek( cSeek_ :=  xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "NF"))
-    if alltrim(SE1->E1_SDOC) == "NFS"
+  if SE1->(dbSeek( cSeek_ :=  xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "NF"))
+    if !empty(SE1->E1_SDOC)
       recLock("SE1", .F.)
         SE1->E1_BASEIRF := oObjeto["baseIRRF"]
         SE1->E1_IRRF := oObjeto["valorIRRF"]
@@ -780,32 +966,65 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
         SE1->E1_INSS := oObjeto["valorINSS"]
 
         //SE1->E1_BASEINS := oObjeto["baseISS"]
-        SE1->E1_ISS := oObjeto["valorISS"]
-        SE1->E1_VRETISS := oObjeto["valorISS"]
+        SE1->E1_ISS := oObjeto["valorIssRetido"]
+        SE1->E1_VRETISS := oObjeto["valorIssRetido"]
       SE1->( msUnlock() )
     endif
   endif
 
   SF3->( dbSetOrder( 4 ) )
-  if SF3->(dbSeek(cSeek_ := xFilial("SF3") + self:cSerieNfe + self:cDocumentoNfe + aCliente[2] + aCliente[3] ))
-    while SF3->(!EOF()) .and. SF3->F3_FILIAL + SF3->F3_CLIENTE + SF3->F3_LOJA + SF3->F3_DOC + SF3->F3_SERIE == cSeek_
-      if !empty(F3_CODISS)
-        recLock("SF3", .F.)
+  if SF3->(dbSeek(cSeek_ := xFilial("SF3") + aCliente[2] + aCliente[3] + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") ))
+    while SF3->(!EOF()) .and. SF3->F3_FILIAL + SF3->F3_CLIEFOR + SF3->F3_LOJA + SF3->F3_NFISCAL + SF3->F3_SERIE == cSeek_
+      recLock("SF3", .F.)
+        SF3->F3_ATIVCPB := cAtivCPB
+        SF3->F3_ALIQCPB := nAliqCPB
+        SF3->F3_VALCPB := Round(SF2->F2_VALMERC * (nAliqCPB / 100),2)
+        SF3->F3_BASECPB := SF2->F2_VALMERC
+        SF3->F3_ESPECIE := "NFS"
+        if !empty(SF3->F3_CODISS)
+          if oObjeto:hasProperty('valorIssRetido')
+            if oObjeto["valorIssRetido"] > 0
+              SF3->F3_ICMSRET := oObjeto["valorIssRetido"]
+              SF3->F3_VALICM := oObjeto["valorIssRetido"]
+            else
+              SF3->F3_VALICM := oObjeto["valorISS"]
+            endif
+          else
+            SF3->F3_VALICM := oObjeto["valorISS"]
+          endif
           SF3->F3_BASEICM := oObjeto["baseISS"]
-          SF3->F3_VALICM := oObjeto["valorISS"]
           SF3->F3_ALIQICM := ( oObjeto["valorISS"] * 100 ) / oObjeto["baseISS"]
-        SF3->( msUnlock() )
-      endif
+        endif
+      SF3->( msUnlock() )
       SF3->(dbSkip())
     enddo
   endif
 
   SFT->( dbSetOrder( 15 ) )
-  if SFT->(dbSeek(xFilial("SFT") + self:cDocumentoNfe + self:cSerieNfe + aCliente[2] + aCliente[3]))
+  if SFT->(dbSeek(xFilial("SFT") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + aCliente[2] + aCliente[3]))
     recLock("SFT", .F.)
+      SFT->FT_ESPECIE := "NFS"
+
+      SFT->FT_ATIVCPB := cAtivCPB
+      SFT->FT_ALIQCPB := nAliqCPB
+      SFT->FT_VALCPB  := Round(SF2->F2_VALMERC * nAliqCPB / 100,2)
+      SFT->FT_BASECPB := SF2->F2_VALMERC   
+
       SFT->FT_ALIQICM := ( oObjeto["valorISS"] * 100 ) / oObjeto["baseISS"]
       SFT->FT_BASEICM := oObjeto["baseISS"]
       SFT->FT_VALICM := oObjeto["valorISS"]
+
+      if oObjeto:hasProperty('valorIssRetido')
+        if oObjeto["valorIssRetido"] > 0
+          SFT->FT_RECISS := "1"
+          SFT->FT_ICMSRET := oObjeto["valorIssRetido"]
+          SFT->FT_VALICM := oObjeto["valorIssRetido"]
+        else
+          SFT->FT_RECISS := "2"
+        endif
+      else
+        SFT->FT_VALICM := oObjeto["valorISS"]
+      endif
 
       SFT->FT_ALIQIRR := ( oObjeto["valorIRRF"] * 100 ) / oObjeto["baseIRRF"]
       SFT->FT_BASEIRR := oObjeto["baseIRRF"]
@@ -837,7 +1056,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   endif
 
   if oObjeto:hasProperty("valorISS")
-    if SE1->(dbSeek(xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "IS-"))
+    if SE1->(dbSeek(xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "IS-"))
       recLock("SE1", .F.)
         SE1->E1_VALOR := oObjeto["valorISS"]
         SE1->E1_SALDO := oObjeto["valorISS"]
@@ -847,7 +1066,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   endif
 
   if oObjeto:hasProperty("valorCOFINS")
-    if SE1->(dbSeek(xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "CF-"))
+    if SE1->(dbSeek(xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "CF-"))
       recLock("SE1", .F.)
         SE1->E1_VALOR := oObjeto["valorCOFINS"]
         SE1->E1_SALDO := oObjeto["valorCOFINS"]
@@ -857,7 +1076,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   endif
 
   if oObjeto:hasProperty("valorCSLL")
-    if SE1->(dbSeek(xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "CS-"))
+    if SE1->(dbSeek(xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "CS-"))
       recLock("SE1", .F.)
         SE1->E1_VALOR := oObjeto["valorCSLL"]
         SE1->E1_SALDO := oObjeto["valorCSLL"]
@@ -867,7 +1086,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   endif
 
   if oObjeto:hasProperty("valorINSS")
-    if SE1->(dbSeek(xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "IN-"))
+    if SE1->(dbSeek(xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "IN-"))
       recLock("SE1", .F.)
         SE1->E1_VALOR := oObjeto["valorINSS"]
         SE1->E1_SALDO := oObjeto["valorINSS"]
@@ -877,7 +1096,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   endif
 
   if oObjeto:hasProperty("valorIRRF")
-    if SE1->(dbSeek(xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "IR-"))
+    if SE1->(dbSeek(xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "IR-"))
       recLock("SE1", .F.)
         SE1->E1_VALOR := oObjeto["valorIRRF"]
         SE1->E1_SALDO := oObjeto["valorIRRF"]
@@ -887,7 +1106,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   endif
 
   if oObjeto:hasProperty("valorPIS")
-    if SE1->(dbSeek(xFilial("SE1") + self:cSerieNfe + self:cDocumentoNfe + space( TAMSX3("E1_PARCELA")[1] ) + "PI-"))
+    if SE1->(dbSeek(xFilial("SE1") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + space( TAMSX3("E1_PARCELA")[1] ) + "PI-"))
       recLock("SE1", .F.)
         SE1->E1_VALOR := oObjeto["valorPIS"]
         SE1->E1_SALDO := oObjeto["valorPIS"]
@@ -913,8 +1132,8 @@ Method getNatureza(oPedido) class IntegraNF
   local lPCC := .F.
   local lINSS := .F.
   
-  if oPedido:hasProperty('valorISS')
-    if oPedido["valorISS"] > 0
+  if oPedido:hasProperty('valorIssRetido')
+    if oPedido["valorIssRetido"] > 0
       lISS := .T.
     endif
   endif
@@ -967,8 +1186,79 @@ Method getNatureza(oPedido) class IntegraNF
     _cNatureza := '010104' // Serviços com retenção de ISS
   endif
 
-  if lISS .and. empty(_cNatureza)
-    _cNatureza := '010104' // Serviços com retenção de ISS
+  if empty(_cNatureza)
+    _cNatureza := '010109' // Serviços sem retenção
   endif
   
 Return _cNatureza
+
+/*/{Protheus.doc} setEmpresa
+  (long_description)
+  @author user
+  @since 24/12/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method setEmpresa(cCNPJ) class IntegraNF
+    
+    Local lRet := .F.
+    
+    OpenSM0(cEmpAnt)
+    
+    SM0->(DbGoTop())
+
+    While SM0->(!Eof())
+        If SM0->M0_CGC == cCNPJ
+            cFilAnt := SM0->M0_CODFIL
+            lRet    := .T.
+            Exit
+        EndIf
+        SM0->(DbSkip())
+    EndDo
+
+Return lRet
+
+/*/{Protheus.doc} methodName
+  (long_description)
+  @author user
+  @since 30/12/2025
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method getClasPro(cCodProd) class IntegraNF
+
+    default cCodProd := ""
+
+    if Empty(cCodProd)
+        return cCodProd
+    endif
+
+    BeginSql alias 'QRYSX5'
+        SELECT count(*) quantidade
+          FROM %table:SX5% SX5
+         WHERE SX5.X5_FILIAL = %xFilial:SX5%
+           AND X5_TABELA = 'CP'
+           AND X5_DESCRI = %exp:alltrim(cCodProd)%
+           AND SX5.D_E_L_E_T_ <> '*'
+    EndSql
+
+    if QRYSX5->quantidade > 0
+
+        cCodigo := getSx8Num("SX5", "X5_CHAVE")
+
+        recLock('SX5', .T.)
+            SX5->X5_FILIAL := xFilial("SX5")
+            SX5->X5_TABELA := 'CP'
+            SX5->X5_CHAVE := cCodigo
+            SX5->X5_DESCRI := cCodProd
+            SX5->X5_DESCSPA := cCodProd
+            SX5->X5_DESCENG := cCodProd
+        SX5->(msUnlock())
+        ConfirmSx8()
+    endif 
+
+    QRYSX5->(dbclosearea())
+    
+Return cCodProd

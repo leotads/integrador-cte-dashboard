@@ -36,7 +36,7 @@ import { timeout } from 'rxjs';
 })
 export class DashboardComponent {
 
-  @Input() acao!: (page: string, status: string) => void;
+  @Input() acao!: (page: string, filters: object) => void;
 
   isLoading: boolean = true;
   numberOfDocuments: string = '0';
@@ -249,7 +249,7 @@ export class DashboardComponent {
 
   async openMonitor(status: string) {
 
-    this.acao("Monitor", status)
+    this.acao("Monitor", { status: [status] });
 
   }
 

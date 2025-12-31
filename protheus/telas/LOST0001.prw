@@ -571,7 +571,9 @@ Static Function getAllDocs(cContent)
   Local nCount := 0
   Local nStart := 1
   Local nReg := 0
+  local cFilters := ""
   Local cWhere := ""
+  local i := 0
 
 
   jContent:fromJson(cContent)
@@ -582,20 +584,101 @@ Static Function getAllDocs(cContent)
     endif
   endif
 
-  if jContent:hasProperty("filtro")
-    if !empty(jContent["filtro"])
-      cWhere += " AND (ZZ1_FILIAL like '%" + alltrim(jContent["filtro"]) + "%' or ZZ1_NUMCTE like '%" + alltrim(jContent["filtro"]) + "%' or ZZ1_SERCTE like '%" + alltrim(jContent["filtro"]) + "%' or ZZ1_CHAVE like '%" + alltrim(jContent["filtro"]) + "%' ) "
+  if jContent:hasProperty("filters")
+
+    if jContent["filters"]:hasProperty("chave")
+      cFilters += " AND ZZ1_CHAVE like '%" + alltrim(jContent["filters"]["chave"]) + "%' "
+    endif
+
+    if jContent["filters"]:hasProperty("tomador") 
+      cFilters += " AND ZZ1_CGC like '%" + alltrim(jContent["filters"]["tomador"]) + "%' "
+    endif
+
+    if jContent["filters"]:hasProperty("dataDe") .or. jContent["filters"]:hasProperty("dataAte")
+
+      if !empty(jContent["filters"]["dataDe"]) .and. !empty(jContent["filters"]["dataAte"])
+        cFilters += " AND ZZ1_DATA between '" + strtran(jContent["filters"]["dataDe"], '-', '') + "' AND '" + strtran(jContent["filters"]["dataAte"], '-', '') + "' "
+      elseif !empty(jContent["filters"]["dataDe"])
+        cFilters += " AND ZZ1_DATA >= '" + strtran(jContent["filters"]["dataDe"], '-', '') + "' "
+      elseif !empty(jContent["filters"]["dataAte"])
+        cFilters += " AND ZZ1_DATA <= '" + strtran(jContent["filters"]["dataAte"], '-', '') + "' "
+      endif 
+    else
+       cFilters += " AND ZZ1_DATA between '" + dtos(FirstDate(ddatabase)) + "' AND '" + dtos(LastDate(ddatabase)) + "' "
+    endif
+
+    if jContent["filters"]:hasProperty("numeroDe") .or. jContent["filters"]:hasProperty("numeroAte")
+
+      if !empty(jContent["filters"]["numeroDe"]) .and. !empty(jContent["filters"]["numeroAte"])
+        cFilters += " AND f2_doc between '" + alltrim(jContent["filters"]["numeroDe"]) + "' and '" + alltrim(jContent["filters"]["numeroAte"]) + "' "
+      elseif !empty(jContent["filters"]["numeroDe"])
+        cFilters += " AND f2_doc >= '" + alltrim(jContent["filters"]["numeroDe"]) + "' "
+      elseif !empty(jContent["filters"]["numeroAte"])
+        cFilters += " AND f2_doc <= '" + alltrim(jContent["filters"]["numeroAte"]) + "' "
+      endif 
+    endif
+
+    if jContent["filters"]:hasProperty("serieDe") .or. jContent["filters"]:hasProperty("serieAte")
+
+      if !empty(jContent["filters"]["serieDe"]) .and. !empty(jContent["filters"]["serieAte"])
+        cFilters += " AND f2_serie between '" + upper(alltrim(jContent["filters"]["serieDe"])) + "' and '" + upper(alltrim(jContent["filters"]["serieAte"])) + "' "
+      elseif !empty(jContent["filters"]["serieDe"])
+        cFilters += " AND f2_serie >= '" + upper(alltrim(jContent["filters"]["serieDe"])) + "' "
+      elseif !empty(jContent["filters"]["serieAte"])
+        cFilters += " AND f2_serie <= '" + upper(alltrim(jContent["filters"]["serieAte"])) + "' "
+      endif
+
+    endif
+
+    if jContent["filters"]:hasProperty("tipo")
+      if len(jContent["filters"]["tipo"]) > 0
+
+        for i := 1 to len(jContent["filters"]["tipo"])
+          if i == 1
+            cFilters += " AND ZZ1_ACAO in ( '" + upper(alltrim(jContent["filters"]["tipo"][i])) +  "' "
+          else
+            cFilters += " , '" + upper(alltrim(jContent["filters"]["tipo"][i])) +  "' "
+          endif
+          
+        next i 
+
+        cFilters += " ) "
+
+      endif
+    endif
+
+    if jContent["filters"]:hasProperty("status")
+      if len(jContent["filters"]["status"]) > 0
+
+        for i := 1 to len(jContent["filters"]["status"])
+          if i == 1
+            cFilters += " AND ZZ1_STATUS in ( '" + upper(alltrim(jContent["filters"]["status"][i])) +  "' "
+          else
+            cFilters += " , '" + upper(alltrim(jContent["filters"]["status"][i])) +  "' "
+          endif
+          
+        next i
+
+        cFilters += " ) "
+
+      endif
     endif
   endif
 
-  cWhere := "% " + cWhere + " %"
+  cWhere := "% " + cFilters + " %"
 
   BeginSql alias cAlias_
-    SELECT zz1.R_E_C_N_O_ recno, zz1.*
+    SELECT zz1.R_E_C_N_O_ recno, zz1.*, f2.*
       FROM %table:ZZ1% zz1 
+      LEFT JOIN %table:SF2% f2 ON f2.f2_filial = zz1.zz1_filcte 
+       AND f2.f2_doc = zz1.ZZ1_NUMCTE
+       AND f2.f2_serie = zz1.zz1_SERCTE 
+       AND f2.f2_cliente = ZZ1.ZZ1_CLIENT 
+       AND f2.f2_loja = ZZ1.ZZ1_LOJA 
+       AND f2.D_E_L_E_T_ = ' '
      WHERE zz1.D_E_L_E_T_ = ' '
      %exp:cWhere%
-     ORDER BY R_E_C_N_O_ desc
+     ORDER BY ZZ1.R_E_C_N_O_ desc
   EndSql
 
   if ( cAlias_ )->( !eof() )
@@ -751,7 +834,7 @@ Static Function reproDocto(cContent)
   ZZ1->( dbSetOrder( 1 ) )
   ZZ1->( dbGoTo( jContent["recno"] ) )
 
-  cRetorno := u_LOSF001B("P")
+  cRetorno := u_LOSF001D(ZZ1->(recno()), ZZ1->ZZ1_STATUS)
 
 Return cRetorno
 

@@ -28,11 +28,11 @@ import { MonitorComponent } from './pages/monitor/monitor.component';
 export class AppComponent {
 
   page: string = "Dashboard";
-  status: string = "";
+  filters: object = {};
 
   readonly menus: Array<PoMenuItem> = [
-    { label: 'Dashboard', action: () => this.onAlterarPage("Dashboard", ""), icon: 'an an-chart-line', shortLabel: 'Dashboard' },
-    { label: 'Monitor', action: () => this.onAlterarPage("Monitor", ""), icon: 'an an-monitor', shortLabel: 'Monitor' },
+    { label: 'Dashboard', action: () => this.onAlterarPage("Dashboard", {}), icon: 'an an-chart-line', shortLabel: 'Dashboard' },
+    { label: 'Monitor', action: () => this.onAlterarPage("Monitor", {}), icon: 'an an-monitor', shortLabel: 'Monitor' },
   ];
 
   constructor(
@@ -48,11 +48,11 @@ export class AppComponent {
     this.status = newStatus;
   }
 */
-  onAlterarPage(newPage: string, status: string) {
-    this.status = status;
+  onAlterarPage(newPage: string, filters: object) {
+    this.filters = filters;
     this.page = newPage;
 
-    console.log('status', status)
+    console.log('filters', filters)
     console.log('page', newPage)
   }
 

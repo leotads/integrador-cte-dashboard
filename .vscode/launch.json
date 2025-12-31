@@ -6,7 +6,8 @@
 			"name": "Smart Client Web Debug",
 			"program": "${command:AskForProgramName}",
 			"isMultiSession": true,
-			"enableTableSync": true
+			"enableTableSync": true,
+			"enableMultiThread": false
 		}
 	],
 	"lastPrograms": [
@@ -68,11 +69,84 @@
 				"A"
 			],
 			"label": "u_LOSF001D"
+		},
+		{
+			"args": [
+				"37899",
+				"A"
+			],
+			"label": "u_losf001D"
+		},
+		{
+			"args": [
+				"37900",
+				"A"
+			],
+			"label": "u_losf001D"
+		},
+		{
+			"args": [
+				"37902",
+				"A"
+			],
+			"label": "u_losf001D"
+		},
+		{
+			"label": "u_LOSF0001"
+		},
+		{
+			"args": [
+				"37908",
+				"A"
+			],
+			"label": "u_losf001d"
+		},
+		{
+			"args": [
+				"37915",
+				"A"
+			],
+			"label": "u_losf001d"
+		},
+		{
+			"args": [
+				"37914",
+				"A"
+			],
+			"label": "u_losf001d"
+		},
+		{
+			"args": [
+				"37916",
+				"A"
+			],
+			"label": "u_losf001d"
+		},
+		{
+			"args": [
+				"37913",
+				"A"
+			],
+			"label": "u_losf001d"
+		},
+		{
+			"args": [
+				"37912",
+				"A"
+			],
+			"label": "u_losf001d"
+		},
+		{
+			"args": [
+				"37911",
+				"A"
+			],
+			"label": "u_losf001d"
 		}
 	],
-	"lastProgramExecuted": "u_LOSF001D",
+	"lastProgramExecuted": "u_losf001d",
 	"lastProgramArguments": [
-		"37898",
+		"37911",
 		"A"
 	]
 }
