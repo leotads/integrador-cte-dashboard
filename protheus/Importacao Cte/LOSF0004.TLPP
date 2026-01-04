@@ -100,14 +100,32 @@ User Function LOSF0004(oBjt,oEndre)
         cCodMun  :=  Upper(AllTrim(oEndre:_CMUN:Text))
     EndIf  
 
-    cDoc := getSx8Num("SA1", "A1_COD")
-    confirmSX8()
+    BeginSql alias 'QRYTT' 
+        SELECT *
+          FROM %table:SA1%
+         WHERE a1_filial = %xFilial:SA1% AND
+               a1_cgc = %exp:cCNPJ% AND
+               a1_inscr = %exp:cIE% AND
+               a1.D_E_L_E_T_ = ' '
+    ENDIF
 
+    if QRYTT->(!EOF())
+        //SA1->( dbGoTo( QRYTT->recno ) ) 
+        return ""
+    endif
+/*
+    if LEN(cCNPJ) == 14
+        cDoc := left(cCNPJ,8)
+    else 
+        cDoc := getSx8Num("SA1", "A1_COD")
+        confirmSX8()
+    endif
+*/
     //----------------------------------
     // Dados do Cliente
     //----------------------------------
-    aAdd(aSA1,{'A1_COD'  	  , cDoc,Nil})
-    aAdd(aSA1,{'A1_LOJA'    , "01",Nil})
+    //aAdd(aSA1,{'A1_COD'  	  , cDoc,Nil})
+    //aAdd(aSA1,{'A1_LOJA'    , u_alCliLoj(cCNPJ),Nil})
     aAdd(aSA1,{'A1_PESSOA'  , IIF(LEN(cCNPJ) == 14, "J", "F"),Nil})
     aAdd(aSA1,{'A1_TIPO'    , "F",Nil})
     aAdd(aSA1,{'A1_CGC'     , cCNPJ,Nil})
@@ -121,7 +139,8 @@ User Function LOSF0004(oBjt,oEndre)
     aAdd(aSA1,{'A1_CEP'     , Substr(cCEP,1,TAMSX3("A1_CEP")[1]),Nil})
     aAdd(aSA1,{'A1_DDD'     , Substr(cCodTel,1,2),Nil})
     aAdd(aSA1,{'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]),Nil})
-    aAdd(aSA1,{'A1_INSCR'   , Substr(cIE,1,TAMSX3("A1_INSCR")[1]),Nil})
+    aAdd(aSA1,{'A1_INSCR'   , Substr( alltrim( iif( alltrim( CUF ) == "PE", strzero( val( cIE ), 9 ), cIE ) ),1,TAMSX3("A1_INSCR")[1]),Nil})
+    //aAdd(aSA1,{'A1_INSCR'   , "0" + transform(val(cIE), "@E 999999-99"),Nil})
     aAdd(aSA1,{'A1_CDRDES'  , cCodRegiao,Nil})
     aAdd(aSA1,{'A1_CODPAIS' , "01058",Nil})
     aAdd(aSA1,{'A1_MSBLQL'  , "2",Nil})
@@ -130,10 +149,12 @@ User Function LOSF0004(oBjt,oEndre)
     MSExecAuto({|a,b,c| CRMA980(a,b,c)}, aSA1, nOpcAuto)
  
     If lMsErroAuto 
-       lRet := lMsErroAuto
+       //lRet := !lMsErroAuto
         //MostraErro() // Não funciona na execução via JOB
         MostraErro(GetSrvProfString("Startpath","") , cArqErro )
         cMensagem := Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
+    //else 
+         //lRet := .T.
     EndIf
     
 Return cMensagem

@@ -62,7 +62,7 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
     Case cType == 'downloadDocument'
       oWebChannel:AdvPLToJS('downloadDocument', encodeutf8(baixaDocto(cContent)))
     Case cType == 'reprocessDocument'
-      oWebChannel:AdvPLToJS('reprocessDocument', encodeutf8(reproDocto(cContent)))
+      oWebChannel:AdvPLToJS('reprocessDocument', reproDocto(cContent))
     Case cType == 'getLog'
       oWebChannel:AdvPLToJS('getLog', encodeutf8(getLog(cContent)))
   End
@@ -836,7 +836,7 @@ Static Function reproDocto(cContent)
 
   cRetorno := u_LOSF001D(ZZ1->(recno()), ZZ1->ZZ1_STATUS)
 
-Return cRetorno
+Return "Processamento realizado com sucesso!"
 
 /*/{Protheus.doc} getLog
   (long_description)
