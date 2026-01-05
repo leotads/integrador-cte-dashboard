@@ -213,19 +213,8 @@ Static Function LOSF001C(nRecno_, cTipo_)
     ZZ1->( dbSetOrder(1) )
     ZZ1->( dbGoTo(nRecno_) )
 
-    Do Case
-        Case Alltrim(ZZ1->ZZ1_ACAO) $ 'I,S' //Inclusao
-            cRet := ProcessaCTE(cTipo_)   
-        Case Alltrim(ZZ1->ZZ1_ACAO) == 'E' //Cancelamento
-            cRet := ProcessaCTE(cTipo_)   
-        Case Alltrim(ZZ1->ZZ1_ACAO) == 'C' //Complemento
-            cRet := ProcessaCTE(cTipo_)   
-        Otherwise
-        
-    EndCase
+    cRet := ProcessaCTE(cTipo_)   
 Return 
-
-
 
 /*/{Protheus.doc} LOSF0001B
  *Usada no reprocessamento dos dados fiscais
@@ -701,7 +690,7 @@ Static Function ProcessaCTE( cTipo )
         EndIf
 
         
-        If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'E' // Cancela nota
+        If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) $ 'E' // Cancela nota
             CancelaCTE()
             
             if !empty(cMensagem)
@@ -2281,9 +2270,10 @@ Static Function CancelaCTE()
     Local oPedido	:=	TNYXPEDIDOS():New() //Classe da Newib agisrn
     Local lRetorno := .F.
     Local cCNPJ := WSAdvValue(oCTE,"_procEventoCTe:_eventoCTe:_infEvento:_CNPJ:TEXT","string") 
-    
-    //cCnpj := SubStr(Alltrim(ZZ1->ZZ1_CHAVE), 7, 14)
+    local dBkpDtBase := dDatabase
+    Local dDtEvent := stoD(strTran(Left(WSAdvValue(oCTE,"_procEventoCTe:_eventoCTe:_infEvento:_DHEVENTO:TEXT","string"),10), '-', ''))
 
+    //cCnpj := SubStr(Alltrim(ZZ1->ZZ1_CHAVE), 7, 14)
     If ValType(cCNPJ) == "U"
         cMensagem := '_procEventoCTe:_eventoCTe:_infEvento:_CNPJ INVALIDA ' 
         return '_procEventoCTe:_eventoCTe:_infEvento:_CNPJ INVALIDA ' 
@@ -2309,6 +2299,7 @@ Static Function CancelaCTE()
         
         If QRYEXL->(!Eof())
             nRecnoAux := QRYEXL->RECNO
+            dDatabase := dDtEvent
             SF2->(DbGoTo(QRYEXL->RECNO))
                 oPedido:DOC         := SF2->F2_DOC
                 oPedido:SERIENF     := SF2->F2_SERIE
@@ -2319,6 +2310,7 @@ Static Function CancelaCTE()
                 If ! oPedido:EXCLUIRNF()
                     MostraErro(GetSrvProfString("Startpath","") , cArqErro )
                     cMensagem := Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
+                    dDataBase := dBkpDtBase
                 Else
                     oCTE := xmlParser(ZZ1->ZZ1_XML, "_", @cErro, @cAviso)    
                     //Cancela fiscal
@@ -2329,13 +2321,15 @@ Static Function CancelaCTE()
                     Else
                         DisarmTransaction()
                     EndIf
-                    
+
+                    dDataBase := dBkpDtBase
                 EndIf
         EndIF
     Else
         cMensagem := "Nota nao foi incluada no Protheus, portanto nao pode ser cancelada. Nao foi encontrado registro (ZZ1) de inclusao para esta nota."
     EndIf
     END TRANSACTION
+
 Return cMensagem
 
 /*/{Protheus.doc} VAlida e cria ZZ1 de inclusao
@@ -2941,6 +2935,8 @@ Static Function getCliente(cCNPJ, cIE, cUF)
     default cIE   := ""
     default cUF   := ""
 
+    cIE := formatAlfa( cIE )
+
     if !Empty(cIE)
         cIE := Substr( alltrim( iif( alltrim( CUF ) == "PE", strzero( val( cIE ), 9 ), cIE ) ),1,TAMSX3("A1_INSCR")[1])
         cWhere := "% AND A1_INSCR = '" + alltrim(cIE) + "' %"
@@ -2967,3 +2963,17 @@ Static Function getCliente(cCNPJ, cIE, cUF)
     QRYCLI->(dbclosearea())
     
 Return aReturn
+
+Static function formatAlfa( cText )
+	Local cRemove := '1234567890'
+	Local cString := cText
+	Local i
+	Local xDig 
+
+	For i := 1 to len( cString )
+		xDig := SubStr( cString, i, 1 ) 
+		If !(xDig $ cRemove)
+			cString := StrTran( cString, xDig, ' ')
+		Endif
+	Next i
+Return cString

@@ -16,7 +16,7 @@
 (examples)
 @see (links_or_references)
 /*/
-User Function alCliLoj(cCgc, cIE := "")
+User Function alCliLoj(cCgc, cIE)
   local cRetorno := "0001"
   
   default cCgc := ""
@@ -29,28 +29,7 @@ User Function alCliLoj(cCgc, cIE := "")
   if !SA1->( dbSeek( xFilial('SA1') + cCgc ) )
     return substr(cCgc,9,4)
   endif
-/*
-  if FUNNAME() == "ALCLILOJ"
-    BeginSql alias 'QRYSA1'
-      SELECT a1_loja
-        FROM %table:SA1% a1
-       WHERE a1_filial = %xFilial:SA1% AND
-             a1_cgc = %exp:cCgc% AND
-             A1_INSCR = %exp:cIE% AND
-             a1.D_E_L_E_T_ = ' '
-    endSql
 
-    if QRYSA1->(!EOF())
-      cRetorno := QRYSA1->a1_loja
-    endif
-    QRYSA1->(dbCloseArea()) 
-
-    if empty(cRetorno)
-      return substr(cCgc,9,4) 
-    endif
-
-  endif
-*/
   if LEN(cCgc) == 14
     BeginSQL alias 'QRYSA1'
       SELECT max(a1_loja) maxloja
@@ -67,7 +46,6 @@ User Function alCliLoj(cCgc, cIE := "")
       else
         cRetorno := "IE01"
       endif
-      //cRetorno := soma1(QRYSA1->maxloja)
     else 
       cRetorno := "IE01"
     endif 
