@@ -2942,7 +2942,12 @@ Static Function getCliente(cCNPJ, cIE, cUF)
     cIE := formatAlfa( cIE )
 
     if !Empty(cIE)
-        cIE := Substr( alltrim( iif( alltrim( CUF ) == "PE", strzero( val( cIE ), 9 ), cIE ) ),1,TAMSX3("A1_INSCR")[1])
+        If alltrim( CUF ) == "PE"
+            cIE := strzero( val( cIE ), 9 )
+        Elseif alltrim( CUF ) == "MG"
+            cIE := strzero( val( cIE ), 13 )
+        EndIf
+
         cWhere := "% AND A1_INSCR = '" + alltrim(cIE) + "' %"
     endif
 
