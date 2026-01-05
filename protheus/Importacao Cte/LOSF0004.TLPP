@@ -100,19 +100,25 @@ User Function LOSF0004(oBjt,oEndre)
         cCodMun  :=  Upper(AllTrim(oEndre:_CMUN:Text))
     EndIf  
 
+    If select('QRYTT') > 0
+        QRYTT->( dbclosearea() )
+    EndIf
+
     BeginSql alias 'QRYTT' 
         SELECT *
           FROM %table:SA1%
          WHERE a1_filial = %xFilial:SA1% AND
                a1_cgc = %exp:cCNPJ% AND
                a1_inscr = %exp:cIE% AND
-               a1.D_E_L_E_T_ = ' '
+               D_E_L_E_T_ = ' '
     Endsql
 
     if QRYTT->(!EOF())
         //SA1->( dbGoTo( QRYTT->recno ) ) 
         return ""
     endif
+    QRYTT->( dbclosearea() )
+
 /*
     if LEN(cCNPJ) == 14
         cDoc := left(cCNPJ,8)
