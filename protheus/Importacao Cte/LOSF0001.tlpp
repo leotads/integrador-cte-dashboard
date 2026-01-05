@@ -1179,17 +1179,21 @@ Static Function ProcessaCTE( cTipo )
             endif
 */
             If lRem
-                If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CNPJ") 
-                    if !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:Text)
-                        cCNPJRem :=  Upper(AllTrim(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:Text))
-                    endif
+                If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE,"_REM") 
+                    If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CNPJ") 
+                        if !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:Text)
+                            cCNPJRem :=  Upper(AllTrim(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:Text))
+                        endif
+                    EndIf
                 EndIf
 
                 if empty(cCNPJRem)
-                    If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CPF") 
-                        if !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:Text)
-                            cCNPJRem := Upper(AllTrim(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:Text))
-                        endif
+                    If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE,"_REM") 
+                        If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CPF") 
+                            if !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:Text)
+                                cCNPJRem := Upper(AllTrim(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:Text))
+                            endif
+                        Endif
                     EndIf
                 endif
             else 
@@ -1215,7 +1219,7 @@ Static Function ProcessaCTE( cTipo )
             else 
                 if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_EXPED,"_IE") 
                     cIE := oCTE:_CTEPROC:_CTE:_INFCTE:_EXPED:_IE:TEXT
-                    cUF := oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_EXPED:_UF:TEXT
+                    cUF := oCTE:_CTEPROC:_CTE:_INFCTE:_EXPED:_ENDEREXPED:_UF:TEXT
                 endif
             endif
             
@@ -1285,7 +1289,7 @@ Static Function ProcessaCTE( cTipo )
         else 
             if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_RECEB,"_IE") 
                 cIE := oCTE:_CTEPROC:_CTE:_INFCTE:_RECEB:_IE:TEXT
-                cUF := oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERRECEB_UF:TEXT
+                cUF := oCTE:_CTEPROC:_CTE:_INFCTE:_RECEB:_ENDERRECEB:_UF:TEXT
             endif
         endif
 

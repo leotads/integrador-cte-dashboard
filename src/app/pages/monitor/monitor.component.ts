@@ -84,6 +84,14 @@ export class MonitorComponent {
       { property: 'serie' },
       { property: 'chave' },
       { 
+        property: 'tipoDocumento', 
+        type: 'label',
+        labels: [
+          { value: "1", label: "CTE" },
+          { value: "2", label: "NFS" },
+        ]
+      },
+      { 
         property: 'acao', 
         type: 'label',
         labels: [

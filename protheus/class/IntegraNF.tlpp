@@ -57,11 +57,19 @@ Return
   /*/
 Method integrar(oPedido, nRecno_) class IntegraNF
 
+  Local dBkpDtBase := ddatabase
   varError := ErrorClass():New()
   
   Default oPedido := JsonObject():new()
 
   TRY
+
+    if oPedido:hasProperty("emissao")
+      if !empty(oPedido["emissao"])
+        aData := strtokarr(oPedido["emissao"], "/")
+        dDataBase := sToD( aData[3] + aData[2] + aData[1] )
+      endif
+    endif
 
     if !oPedido:hasProperty("prestador")
       varError:genCode := 001
@@ -189,6 +197,8 @@ Method integrar(oPedido, nRecno_) class IntegraNF
 
   EndTry
 
+  dDataBase := dBkpDtBase
+
 Return 
 
 /*/{Protheus.doc} findOrCreateClient
@@ -313,12 +323,11 @@ Method findOrCreateClient(oObjeto) class IntegraNF
     if oObjeto:hasProperty('valorIssRetido')
       if oObjeto["valorIssRetido"] > 0
         SA1->A1_RECISS := "1"
-        SA1->A1_INCISS := "S"
       else
         SA1->A1_RECISS := "2"
-        SA1->A1_INCISS := "N"
       endif
     endif 
+    SA1->A1_INCISS := "S"
 
     if oObjeto:hasProperty('valorIRRF')
       if oObjeto["valorIRRF"] > 0
@@ -390,13 +399,13 @@ Method findOrCreateClient(oObjeto) class IntegraNF
 
   if oObjeto:hasProperty('valorIssRetido')
     if oObjeto["valorIssRetido"] > 0
-      oSA1Mod:setValue("A1_INCISS", "S" )
       oSA1Mod:setValue("A1_RECISS", "1" )
     else
-      oSA1Mod:setValue("A1_INCISS", "N" )
       oSA1Mod:setValue("A1_RECISS", "2" )
     endif
   endif 
+
+  oSA1Mod:setValue("A1_INCISS", "S" )
 
   if oObjeto:hasProperty('valorIRRF')
     if oObjeto["valorIRRF"] > 0
@@ -505,6 +514,8 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   Local _cNatureza := Alltrim(SuperGetMv("MS_NATNFS",.F.,"010102"))
   Local cTes := '512'
   local dEmissao := ddatabase
+  local cUFDest_ := ""
+  local cCodMunPrest := ""
 //  Local cCfop := ""
 //  Local nPesoBruto := 0
 
@@ -535,6 +546,14 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
       aData := strtokarr(oPedido["emissao"], "/")
       dEmissao := sToD( aData[3] + aData[2] + aData[1] )
     endif
+  endif
+
+  if oPedido:hasProperty("ufPrest")
+    cUFDest_ := alltrim(oPedido["ufPrest"])
+  endif
+
+  if oPedido:hasProperty("CodMunPrest")
+    cCodMunPrest := alltrim(oPedido["CodMunPrest"])
   endif
 /*
   if oPedido:hasProperty("codigoCfop")
@@ -601,7 +620,14 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   aadd(aCabec, {"C5_EMISSAO", dEmissao, nil })
   aadd(aCabec, {"C5_CONDPAG", cCond, Nil})                
   aadd(aCabec, {"C5_TIPOCLI", SA1->A1_TIPO, Nil})                
+//  aadd(aCabec, {"C5_UFDEST", cUFDest_, Nil})                
   aadd(aCabec, {"C5_CLASFIS", POSICIONE("SF4", 1, xFilial("SF4") + cTes, "F4_CSTISS"), Nil}) 
+
+  if !empty(cCodMunPrest)
+    aadd(aCabec, {"C5_ESTPRES", cUFDest_, Nil})                
+    aadd(aCabec, {"C5_MUNPRES", substr(alltrim(cCodMunPrest), 3, len(alltrim(cCodMunPrest)) - 2), Nil})                
+
+  endif
 
 
 //  aadd(aCabec, {"C5_TPCARGA", "2", Nil})                

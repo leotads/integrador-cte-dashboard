@@ -723,6 +723,7 @@ Static Function getAllDocs(cContent)
       oJson['chave'] := alltrim(( cAlias_ )->ZZ1_CHAVE)
       oJson['documento'] := alltrim(( cAlias_ )->ZZ1_NUMCTE)
       oJson['serie'] := alltrim(( cAlias_ )->ZZ1_SERCTE)
+      oJson['tipoDocumento'] := alltrim(( cAlias_ )->ZZ1_TIPO)
       oJson['details'] := {}
 
       aadd(aDados, oJson)

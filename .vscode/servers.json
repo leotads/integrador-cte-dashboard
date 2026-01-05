@@ -19,7 +19,8 @@
 		],
 		"environments": [
 			"CJ4AP2_LEONARDO",
-			"CJ4AP2_DEV"
+			"CJ4AP2_DEV",
+			"CJ4AP2_HOMOLOGACAO"
 		],
 		"username": "leonardo.freitas",
 		"environment": "CJ4AP2_LEONARDO",
@@ -46,7 +47,8 @@
 			],
 			"environments": [
 				"CJ4AP2_LEONARDO",
-				"CJ4AP2_DEV"
+				"CJ4AP2_DEV",
+				"CJ4AP2_HOMOLOGACAO"
 			],
 			"username": "leonardo.freitas",
 			"environment": "CJ4AP2_LEONARDO",
@@ -171,6 +173,13 @@
 			{
 				"id": "q1cpwbkgulsmjsu42o9kqasjsewide",
 				"token": "djM6cTFjcHdia2d1bHNtanN1NDJvOWtxYXNqc2V3aWRlOjE6MTkyLjE2OC4xMzcuMjA6MTY1MzE6MDo3LjAwLjI0MDIyM1A6Mw==:djE6TFVaQVJURV9IT006YWRtaW5pc3RyYWRvcjpXdDU0TDJNTk9MNGY2d2taN1RGdCsza0dzdG1BZjBRUHpiL0R5b1lEV0NRPQ==|djI6MTc2NzExNDEyNDowOjE6MQ==.cBL+/pclFOLYNHHz+XuoxBCI+hw1UD8eZlcfaXbSHUYB6ur4KBBdm31rs3yuJ6ZfEXNRCIaTkoWFYNe/mnQbCPEwwvJ4Z9tms7Z4DM8VqBtHEtsx+hn5bCxxRLXGT6dU7G5QlX4vBNfxhfVcyrqZzLpHso6aK0eN2jOycGZit+vWIx62olvz0KJUKm8OLRSP3NLnWMwT4VUy8XVbwryGKbwORouF8bqyOSJQu0/O/aY1RJJ59xxeDj2s0NoLyl/Zl4SkPzz+vWrvvbEGzfTIV3FDWANSJpJJOQD3v6ee3crVn+/VqBfSa6DmUYPHCPQ7fzC3ugKkAiRSYTsoLR0Ckg=="
+			}
+		],
+		[
+			"7tvjxb514zdmjgp9iyec51x6z65pam:CJ4AP2_HOMOLOGACAO",
+			{
+				"id": "7tvjxb514zdmjgp9iyec51x6z65pam",
+				"token": "djM6N3R2anhiNTE0emRtamdwOWl5ZWM1MXg2ejY1cGFtOjE6dHJhbnNhZ2lsMjAyNjExLnByb3RoZXVzLmNsb3VkdG90dnMuY29tLmJyOjExNDExOjE6Ny4wMC4yNDAyMjNQOjM=:djE6Q0o0QVAyX0hPTU9MT0dBQ0FPOmxlb25hcmRvLmZyZWl0YXM6WUhHNG5WNWN4RmhrNzZCWit0TmgvdjRGZWFPQXA4ajVzVHJ4VnBydHBnST0=|djI6MTc2NzU2NDgzNTowOjE6MQ==.VL7AB+eyJfnooAPzXY6cuVRk2OjfXY2dcKpJl0RkJhd7WUT4srTIYkQkaNaZ2WdhsfruZeTO1YtACRtfeYoc+HKF0HWA31jw6+2OfgRgsPMFExIBo4JjfJvkjGlwN4qMzo+sQ5J/oWWaOAcomal4azQxnn+HQmAa0gPcVwKTNR0iaq5AuHaGl1+8C8KEzqwAXOlPA+JezmkOQC/wVXEAwYLhkGRwX0RqYjqtap82a66T32hjTSF9gW5CskIPsLxiJS1+I4yUd4Q0sJZLWBS9kkjJ49gL9b8eQ18mbuHk0wMlAIT32920ccGipRSVAbLOszd4R1GqWpS/rV5quTFZeA=="
 			}
 		]
 	],
