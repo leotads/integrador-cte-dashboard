@@ -2859,6 +2859,10 @@ Static Function getClasPro(cCodProd)
         return cCodProd
     endif
 
+    if select('QRYX5') > 0
+        QRYX5->(dbclosearea())
+    endif
+
     BeginSql alias 'QRYX5'
         SELECT count(*) quantidade
           FROM %table:SX5% SX5
