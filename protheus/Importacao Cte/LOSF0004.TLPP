@@ -145,7 +145,14 @@ User Function LOSF0004(oBjt,oEndre)
     aAdd(aSA1,{'A1_CEP'     , Substr(cCEP,1,TAMSX3("A1_CEP")[1]),Nil})
     aAdd(aSA1,{'A1_DDD'     , Substr(cCodTel,1,2),Nil})
     aAdd(aSA1,{'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]),Nil})
-    aAdd(aSA1,{'A1_INSCR'   , Substr( alltrim( iif( alltrim( CUF ) == "PE", strzero( val( cIE ), 9 ), cIE ) ),1,TAMSX3("A1_INSCR")[1]),Nil})
+    
+    If alltrim( CUF ) == "PE"
+        aAdd(aSA1,{'A1_INSCR'   ,  Strzero( val( cIE ), 9 ), nil }) 
+    Elseif alltrim( CUF ) == "MG"
+        aAdd(aSA1,{'A1_INSCR'   , strzero( val( cIE ), 13 ), nil })
+    Else
+        aAdd(aSA1,{'A1_INSCR'   , cIe, nil })
+    EndIf
     //aAdd(aSA1,{'A1_INSCR'   , "0" + transform(val(cIE), "@E 999999-99"),Nil})
     aAdd(aSA1,{'A1_CDRDES'  , cCodRegiao,Nil})
     aAdd(aSA1,{'A1_CODPAIS' , "01058",Nil})

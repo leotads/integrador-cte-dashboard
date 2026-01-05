@@ -25,7 +25,7 @@ User Function acoita()
 	dbSelectArea("SX6")
 	dbSetOrder(1)
 	dbgoTop()      
-	If !Dbseek('  '+cParametro)
+	If !Dbseek(xfilial("SX6")+cParametro)
 		Reclock("SX6",.T.)
 		Replace X6_VAR 		with cParametro
 		Replace X6_TIPO 	with 'C'
@@ -79,7 +79,7 @@ User function AcoitaA(cFuncao)
 	dbSelectArea("SX6")
 	dbSetOrder(1)
 	dbgoTop()      
-	If Dbseek('  MV_ACOITA')
+	If Dbseek( xfilial("SX6") + 'MV_ACOITA')
 		Reclock("SX6",.f.)
 		Replace X6_CONTEUD	with cFuncao
 		Msunlock()
