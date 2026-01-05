@@ -2872,7 +2872,7 @@ Static Function getClasPro(cCodProd)
            AND SX5.D_E_L_E_T_ <> '*'
     EndSql
 
-    if QRYX5->quantidade > 0
+    if QRYX5->quantidade == 0
 
         cCodigo := getSx8Num("SX5", "X5_CHAVE")
 
