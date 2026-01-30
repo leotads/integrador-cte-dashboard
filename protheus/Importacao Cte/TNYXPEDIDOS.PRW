@@ -241,7 +241,7 @@ METHOD GERANF() CLASS TNYXPEDIDOS
 			SF2->(DbSetOrder(1))//F2_FILIAL, F2_DOC, F2_SERIE, F2_CLIENTE, F2_LOJA
 			If SF2->(DbSeek(xFilial('SF2') + Padr(cYNumNF, Len(SF2->F2_DOC)) + Padr(self:SERIENF, Len(SF2->F2_SERIE)) + oAuxPed:Get('C5_CLIENTE') + oAuxPed:Get('C5_LOJACLI') ))
 				lResult := .F.
-				AutoGrLog('Nota fiscal ' + cYNumNF + ' ja cadastrada no sistema. ')
+				//AutoGrLog('Nota fiscal ' + cYNumNF + ' ja cadastrada no sistema. ')
 				::RETORNO := 'Nota fiscal ' + cYNumNF + ' ja cadastrada no sistema. '
 				Exit
 			EndIf
@@ -522,7 +522,7 @@ METHOD QUALNF() CLASS TNYXPEDIDOS
 		SC9->(dbSetOrder(1)) //FILIAL+NUMERO+ITEM
 		SC9->(dbSeek(xFilial("SC9")+oAuxPed:Get('C5_NUM')))
 		while SC9->(!EOF()) .and. SC9->C9_FILIAL == oAuxPed:Get('C5_FILIAL') .and. SC9->C9_PEDIDO == oAuxPed:Get('C5_NUM')
-			if SF2->(dbSeek(SC9->C9_FILIAL+SC9->C9_NFISCAL+SC9->C9_SERIENF+SC9->C9_CLIENTE+SC9->C9_LOJA+self:FORMULNF+self:TIPONF))
+			if SF2->(dbSeek(SC9->C9_FILIAL+SC9->C9_NFISCAL+SC9->C9_SERIENF+SC9->C9_CLIENTE+SC9->C9_LOJA/*+self:FORMULNF+self:TIPONF*/))
 				aAdd(aAuxNF, SF2->(recNo()))
 			endif
 			SC9->(dbSkip())
@@ -665,6 +665,7 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 		aAdd(aCamposSC5, {"C5_CMUNDE" , oPedAux:Get('C5_CMUNDE')        			,Nil})
 		aAdd(aCamposSC5, {"C5_UFORIG" , oPedAux:Get('C5_UFORIG')        			,Nil})
 		aAdd(aCamposSC5, {"C5_CMUNOR" , oPedAux:Get('C5_CMUNOR')        			,Nil})
+		aAdd(aCamposSC5, {"C5_MENNOTA" , oPedAux:Get('C5_MENNOTA')        			,Nil})
 		
 		//Cliente Remetente
 		aAdd(aCamposSC5, {"C5_CLIRET" ,oPedAux:Get('C5_CLIRET')        			,Nil})
@@ -712,7 +713,8 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 			aAdd(aCpoSC6Aux, {"C6_PRODUTO",oPedAux:Get('C6_PRODUTO')	,nil})
 			aAdd(aCpoSC6Aux, {"C6_QTDVEN" ,oPedAux:Get('C6_QTDVEN')	,nil})
 			aAdd(aCpoSC6Aux, {"C6_PRCVEN" ,oPedAux:Get('C6_PRCVEN')	,nil})
-			aAdd(aCpoSC6Aux, {"C6_PRUNIT" ,oPedAux:Get('C6_PRCVEN')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_PRUNIT" ,oPedAux:Get('C6_PRUNIT')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_VALOR" ,oPedAux:Get('C6_VALOR')	,nil})
 			aAdd(aCpoSC6Aux, {"C6_TES"    ,oPedAux:Get('C6_TES')		,nil})
 			aAdd(aCpoSC6Aux, {"C6_DESPESA",oPedAux:Get('C6_DESPESA')	,nil})
 
@@ -720,6 +722,10 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 			
 			aAdd(aCpoSC6Aux, {"C6_CLASFIS",oPedAux:Get('C6_CLASFIS')	,nil})
 			aAdd(aCpoSC6Aux, {"C6_CF",oPedAux:Get('C6_CF')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_NFORI",oPedAux:Get('C6_NFORI')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_SERIORI",oPedAux:Get('C6_SERIORI')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_ITEMORI",oPedAux:Get('C6_ITEMORI')	,nil})
+			aAdd(aCpoSC6Aux, {"C6_CONTA",oPedAux:Get('C6_CONTA')	,nil})
 
    
       if !empty(oPedAux:Get('C6_LOCAL'))

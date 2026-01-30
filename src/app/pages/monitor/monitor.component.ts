@@ -98,6 +98,7 @@ export class MonitorComponent {
           { value: "I", label: "Inclusão" },
           { value: "C", label: "Carta Correção" },
           { value: "E", label: "Exclusão" },
+          { value: "S", label: "Substituição" },
         ]
       },
     ];

@@ -127,6 +127,50 @@ Return .T.
 Static Function LOSF001F()
 return
 
+/*/{Protheus.doc} losf001H
+(long_description)
+@type user function
+@author user
+@since 08/01/2026
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function losf001H(aParam)
+
+    PREPARE ENVIRONMENT EMPRESA aParam[1] FILIAL aParam[2]
+
+        u_losf001d(0, 'A')
+
+    RESET ENVIRONMENT
+
+Return 
+
+/*/{Protheus.doc} losf001H
+(long_description)
+@type user function
+@author user
+@since 08/01/2026
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function LOSF001I(cRecno, cStatus)
+
+    PREPARE ENVIRONMENT EMPRESA "01" FILIAL "01010001"
+
+        u_losf001d(cRecno, cStatus)
+
+    RESET ENVIRONMENT
+
+Return 
+
 User Function LOSF001D(nRecNoZZ1, cStatus, cTipo)
     Local cRet
     Local   _cQuery   := ""
@@ -137,11 +181,6 @@ User Function LOSF001D(nRecNoZZ1, cStatus, cTipo)
     Default nRecNoZZ1 := 0
     Default cStatus := 'A'
     Default cTipo := '1'
-
-    If Empty(FunName())
-        PREPARE ENVIRONMENT EMPRESA '01' FILIAL '01010001'
-        //PREPARE ENVIRONMENT EMPRESA '99' FILIAL '01'
-    EndIf
     
     _cQuery := " AND ZZ1_STATUS = '" + cStatus + "' "
     
@@ -152,10 +191,6 @@ User Function LOSF001D(nRecNoZZ1, cStatus, cTipo)
     If nRecNoZZ1 != 0
         _cQuery += " AND ZZ1.R_E_C_N_O_  = " + cValToChar(nRecNoZZ1)
     EndIf
-
-//    _cQuery += " AND ZZ1.ZZ1_TIPO  = '" + cValToChar(cTipo) + "' "
-//    _cQuery += " AND ZZ1.ZZ1_DATA = '20260102' "
-//    _cQuery += " AND ZZ1.ZZ1_ACAO = 'I' "
 
     _cQCorpo := '%' + _cQuery  + '%'
 
@@ -174,10 +209,10 @@ User Function LOSF001D(nRecNoZZ1, cStatus, cTipo)
         WHERE ZZ1.%NOTDEL%
              %Exp:_cQCorpo%
         ORDER BY R_E_C_N_O_
+        FETCH FIRST 400 ROWS ONLY
                 
     EndSql
-    
-    //MEMOWRITE("C:\TEMP\LOSF0001.sql",GETLASTQUERY()[2]) 	
+    count to nReg
 
     DbSelectArea('TMPZZ1')
     TMPZZ1->(DbGoTop())
@@ -193,6 +228,7 @@ User Function LOSF001D(nRecNoZZ1, cStatus, cTipo)
 
         TMPZZ1->(DbSkip())
     EndDo
+    TMPZZ1->( dbCloseArea() )
 
 Return cRet
 
@@ -266,354 +302,11 @@ Static Function ProcesNFse(nRecno_, cTipo_)
 
     oData:fromJson(ZZ1->ZZ1_JSON)
 
-    lReturn_ := oIntNFse:integrar(oData)
-
-Return 
-
-/*/{Protheus.doc} incluiCTE
-    (long_description)
-    @type  Static Function
-    @author user
-    @since 10/11/2025
-    @version version
-    @param param_name, param_type, param_descr
-    @return return_var, return_type, return_description
-    @example
-    (examples)
-    @see (links_or_references)
-/*/
-/*Static Function incluiCTE(cTipo_)
-
-    //local i
-    local oData := JsonObject():new()
-
-    varError := ErrorClass():New()
-
-    TRY 
-
-        //Posiona o registro para processamento
-        //ZZ1->(DbGoTo(nRecZZ1))
-        cXml := ZZ1->ZZ1_XML
-        
-        //Valida o cadastro do tipo CTE no cadastro de tipos de titulos do financeiro
-        If !  SX5->(DbSeek(xFilial('SX5') +  '05' + 'CTE'))
-            varError:genCode := 001
-            varError:description := "Tipo CTE nao localizado no cadastro de tipo de titulos"
-            throw varError
-        EndIf
-
-        //Transforma o CTE em um objeto
-        oCTE := xmlParser(cXML, "_", @cErro, @cAviso)    
-            
-        //Valida o objeto    
-        If ValType(oCTE) == 'U'
-            varError:genCode := 001
-            varError:description := 'Erro no objeto XML: ' + cErro
-            throw varError
-        EndIf
-
-        if ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_SERIE:TEXT","string")) != 'U'
-            oData["serie"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_SERIE:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Serie CTE' nao encontrada no xml do CTE"
-            throw varError
-        endif
-        
-        if ValType( WSAdvValue( oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_NCT:TEXT","string" ) ) != 'U'
-            oData["numero"] := PADL( WSAdvValue( oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_NCT:TEXT","string" ),TAMSX3("F2_DOC")[1],"0")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Numero CTE' nao encontrada no xml do CTE"
-            throw varError
-        endif
-        
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_EMIT:_CNPJ:TEXT","string") ) != 'U'
-            oData["cnpjEmitente"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_EMIT:_CNPJ:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'CNPJ Emitente' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_PROTCTE:_INFPROT:_CHCTE:TEXT","string") ) != 'U'
-            oData["chaveCte"] := WSAdvValue(oCTE,"_CTEPROC:_PROTCTE:_INFPROT:_CHCTE:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Chave CTE' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_CFOP:TEXT","string") ) != 'U'
-            oData["cfop"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_CFOP:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'CFOP' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_DHEMI:TEXT","string") ) != 'U'
-            oData["emissao"] := StoD(StrTran(Left(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_DHEMI:TEXT","string"),10),'-',''))
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Emissao' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_VPREST:_VTPREST:TEXT","string") ) != 'U'
-            oData["valorFrete"] := val( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_VPREST:_VTPREST:TEXT","string") )
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Valor Frete' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_UFINI:TEXT","string") ) != 'U'
-            oData["ufInicial"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_UFINI:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'UF Inicial' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT","string") ) != 'U'
-            oData["ufDestino"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_UFFIM:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'UF Destino' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_REM:_xNome:TEXT","string") ) != 'U'
-            oData["nomeRemetente"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_REM:_xNome:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Nome Remetente' nao encontrada no xml do CTE"
-            throw varError
-        endif
-
-        if ValType( WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_DEST:_xNome:TEXT","string") ) != 'U'
-            oData["nomeDestinatario"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_DEST:_xNome:TEXT","string")
-        else 
-            varError:genCode := 001
-            varError:description := "Tag 'Nome Destinatario' nao encontrada no xml do CTE"
-            throw varError
-        endif
-        
-        If ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:TEXT","string")) != "U"
-            oData["remetente"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_REM:_CPF:TEXT","string")) != "U"
-            oData["remetente"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_REM:_CPF:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_EXPED:_CNPJ:TEXT","string")) != "U"
-            oData["remetente"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_EXPED:_CNPJ:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_EXPED:_CPF:TEXT","string")) != "U"
-            oData["remetente"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_EXPED:_CPF:TEXT","string")
-        Else
-            varError:genCode := 001
-            varError:description := "Tag _INFCTE:_REM ou _INFCTE:_EXPED nao encontrada no xml do CTE"
-            throw varError
-        EndIf
-        
-        
-        If ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_DEST:_CNPJ:TEXT","string")) != "U"
-            oData["cnpjDestinatario"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_DEST:_CNPJ:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_DEST:_CPF:TEXT","string")) != "U"
-            oData["cnpjDestinatario"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_DEST:_CPF:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_RECEB:_CNPJ:TEXT","string")) != "U"
-            oData["cnpjDestinatario"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_RECEB:_CNPJ:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_RECEB:_CPF:TEXT","string")) != "U"
-            oData["cnpjDestinatario"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_RECEB:_CPF:TEXT","string")
-        Else
-            varError:genCode := 001
-            varError:description := "Tag _INFCTE:_DEST:_CNPJ nao encontrada no xml do CTE"
-            throw varError
-        EndIf
-
-
-        If Type('oProcess') != 'U'        	
-            oProcess:SetRegua2(4)	
-            oProcess:IncRegua2("Validando XML...")		    
-        EndIf
-
-        If ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA3:_TOMA:TEXT","string")) != "U"
-            oData["tomador"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA3:_TOMA:TEXT","string")
-        ElseIf ValType(WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA4:_TOMA:TEXT","string")) != "U"
-            oData["tomador"] := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA4:_TOMA:TEXT","string")
-        Else
-            varError:genCode := 001
-            varError:description := "Tag 'Tomador' nao encontrada no xml do CTE"
-            throw varError
-        EndIf
-
-        
-        If Type('oProcess') != 'U'        	
-            oProcess:IncRegua2("Processando CTE " +  cYNumNF + '/' + cYNumSer)
-        EndIf
-
-
-
-
-
-        //Alteracao da data base
-        //dEmissao    := StoD(StrTran(Left(dEmissao,10),'-',''))
-        //dDatabase   := dEmissao
-
-        //Pega o valor total do frete
-        //nVlrFrete   := Val(nVlrFrete)
-        
-        //dados dos vendedores, passa por parametro o array com os dados dos vendedores
-        aXMLVend := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_COMPL:_OBSCONT","string")
-        oData["vendedores"]   := dadosVend(aXMLVend, nVlrFrete)
-
-        //Seta a filial que corresponde ao CNPJ
-        If ! setEmpresa(odata["cnpjEmitente"])
-            varError:genCode := 001
-            varError:description := 'Cadastro de filial nao localizado com o CNPJ ' + cCNPJ
-            throw varError
-        EndIf
-
-        //Posiciona o cliente    
-        //cCNPJCli := getTomador(cTomador, oCTE)
-        aTomador := getTomador(oData["tomador"], oCTE)
-
-        If Empty(aTomador[1])
-            varError:genCode := 001
-            varError:description := 'Erro ao tentar obter o CNPJ do tomador.'
-            throw varError
-        EndIf
-
-        //Posiciona o cliente pelo CNPJ do tomador
-        SA1->(dbSetOrder(3))
-        If SA1->(DbSeek( xFilial("SA1") + PADR(aTomador[1],TamSx3("A1_CGC")[1]) ))
-            cCODCli := SA1->A1_COD
-            cLojCli := SA1->A1_LOJA
-            cNomCli := SA1->A1_NOME
-            RecLock('ZZ1', .F.)
-                ZZ1->ZZ1_FILCTE := cFilAnt
-                ZZ1->ZZ1_CLIENT := SA1->A1_COD
-                ZZ1->ZZ1_LOJA   := SA1->A1_LOJA
-            ZZ1->(MsUnLock())
-            _lok := .T.
-        Else
-            cMensagem :=  U_LOSF0004(&("oCTE:" + aTomador[2]),&("oCTE:" + aTomador[3]))
-
-            if !empty(cMensagem)
-                varError:genCode := 001
-                varError:description := cMensagem
-                throw varError
-            else 
-                _lok := .T.
-            endif
-
-            RecLock('ZZ1', .F.)
-                ZZ1->ZZ1_CGC := aTomador[1]
-                ZZ1->ZZ1_FILCTE := cFilAnt
-                ZZ1->ZZ1_CLIENT := SA1->A1_COD
-                ZZ1->ZZ1_LOJA   := SA1->A1_LOJA
-            ZZ1->(MsUnLock())
-        EndIf 
-
-        
-        
-        oTomador := JsonObject():new()
-        oTomador["cgc"] := ZZ1->ZZ1_CGC 
-        oTomador["codigo"] := ZZ1->ZZ1_CLIENT 
-        oTomador["loja"] := ZZ1->ZZ1_LOJA
-
-        odata["tomador"] := oTomador
-
-        //Verifica o remetente, se nao tiver, GRAVA NA SA1
-        If _lok
-
-            If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CNPJ") 
-                cCNPJRem :=  Upper(AllTrim(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:Text))
-            EndIf
-
-            if empty(cCNPJRem)
-                If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CPF") 
-                    cCNPJRem := Upper(AllTrim(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:Text))
-                EndIf
-            endif
-            
-
-            SA1->(dbSetOrder(3))
-            If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJRem,TamSx3("A1_CGC")[1]) ))
-                cCODRem := SA1->A1_COD
-                cLojRem := SA1->A1_LOJA
-                cNomRem := SA1->A1_NOME
-                _lok := .T.
-            Else
-                SA1->(dbSetOrder(3))
-                cMensagem :=   U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_ENDERREME)
-
-                if !empty(cMensagem)
-                    varError:genCode := 001
-                    varError:description := cMensagem
-                    throw varError
-                else
-                    _lok := .T.
-                endif
-                If _lok
-                    If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJRem,TamSx3("A1_CGC")[1]) ))
-                        cCODRem := SA1->A1_COD
-                        cLojRem := SA1->A1_LOJA
-                        cNomRem := SA1->A1_NOME
-                    Endif
-                Endif    
-            EndIf
-
-            oRemetente := JsonObject():new()
-            oRemetente["codigo"] := cCODRem 
-            oRemetente["loja"] := cLojRem
-            oRemetente["nome"] := cNomRem
-
-            oData["remetente"] := oRemetente
-
-        Endif
-
-        cTes := getTes(cCFOP)
-        
-        If Empty(cTes)
-            oError := ErrorClass():new()
-            oError:genCode := 001
-            oError:description := 'TES nao localizada para o CFOP ' + cCFOP
-            THROW oError
-        EndIf
-
-        oData["tes"] := cTes
-
-        //Verifica o destinatario, se nao tiver, nao usa        
-        SA1->(dbSetOrder(3))
-        If SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
-            cCODDes := SA1->A1_COD
-            cLojDes := SA1->A1_LOJA
-            cNomDes := SA1->A1_NOME
-        
-        Else
-            cMensagem  :=   U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST, oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_ENDERDEST)//GravaSA1(cCnpjDest,cNomDest)
-            
-            if !empty(cMensagem)
-                varError:genCode := 001
-                varError:description := cMensagem
-                throw varError
-            else 
-                _lok := .T.
-            endif
-            
-            If _lok 
-                If SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
-                    cCODDes := SA1->A1_COD
-                    cLojDes := SA1->A1_LOJA
-                    cNomDes := SA1->A1_NOME
-                Endif
-            EndIf    
-        
-        EndIf
-
-        
-
-    CATCH oError 
-
+    if ZZ1->ZZ1_ACAO == "I"
+        lReturn_ := oIntNFse:integrar(oData)
+    elseif ZZ1->ZZ1_ACAO == "E"
+        lReturn_ := oIntNFse:cancelar(oData)
+    else 
         recLock( "ZZ1", .F. )
             ZZ1->ZZ1_STATUS := "E"
         ZZ1->( msUnlock() )
@@ -628,11 +321,11 @@ Return
             ZZ2->ZZ2_status := "E"
             ZZ2->ZZ2_dtpros := dDataBase
             ZZ2->ZZ2_hrpros := time()
-            ZZ2->ZZ2_log    := oError:description
+            ZZ2->ZZ2_log    := "Está ação não está configurada para NFS"
         ZZ2->( msUnLock() )
+    endif
 
-    ENDTRY
-Return */
+Return 
 
 /*/{Protheus.doc} ProcessaCTE
  * Funcao que faz o processamento dos CTEs incluindo os pedidos de venda
@@ -653,6 +346,7 @@ Static Function ProcessaCTE( cTipo )
     Private cChvOld := ""
     Private cTPSERV := ""
     Private cTPCTE := ""
+    Private xObs := ""
 
     varError := ErrorClass():New()
 
@@ -919,6 +613,17 @@ Static Function ProcessaCTE( cTipo )
             cChvOld := oCTE:_CTEPROC:_CTE:_INFCTE:_INFCTENORM:_INFCTESUB:_CHCTE:TEXT
         endif
 
+        //Caso for CTE de Complemento ira pegar a chavCTE original
+        if ZZ1->ZZ1_ACAO == "C"
+            cChvOld := oCTE:_CTEPROC:_CTE:_INFCTE:_INFCTECOMP:_CHCTE:TEXT
+
+            if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE, "_COMPL")
+                if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_COMPL, "_XOBS")
+                    xOBS := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_COMPL:_XOBS:TEXT","string") + ", CHAVE CTE ORIG: " + cChvOld
+                endif
+            endif
+        endif
+
         cClasProd := getClasPro(ZZ1->ZZ1_CODPRO)
 
         if empty(cClasProd)
@@ -927,55 +632,24 @@ Static Function ProcessaCTE( cTipo )
             throw varError 
         endif
 
-        cCodProd := PADR(SuperGetMv('MS_PRODFRE',.F., 'FRETE          '), Len(SB1->B1_COD) )
-
-/*
-        //Caso for CTE de complemento irá pegar o produto do CTE anterior
-        if cTPCTE == "1"
-            if !AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_INFCTECOMP, "_CHCTE")
-                varError:genCode := 001
-                varError:description := "Tag _CHCTE referente ao CTE Normal nao encontrada no xml do CTE"
-                throw varError
-            endif
-            
-            cChvOld := oCTE:_CTEPROC:_CTE:_INFCTE:_INFCTECOMP:_CHCTE:TEXT
-
-            if empty(cChvOld)
-                varError:genCode := 001
-                varError:description := "CHAVE CTE ORIGINAL nao encontrada no xml do CTE"
-                throw varError
-            endif
-
-            aProduto := getProdCte(cChvOld)
-
-            if !aProduto[1]
-                varError:genCode := 001
-                varError:description := aProduto[2]
-                throw varError
-            endif
-
-            cCodProd := aProduto[2]
-        else 
-
-            cDescProd := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_INFCTENORM:_INFCARGA:_PROPRED:TEXT","string")
-            cCodProd := POSICIONE( "SB1", 1, xFilial( "SB1" ) + cDescProd, "B1_COD" )
-
-            if empty(cCodProd) 
-                cCodProd := PADR(SuperGetMv('MS_PRODFRE',.F., 'FRETE          '), Len(SB1->B1_COD) )
-                
-                //varError:genCode := 001
-                //varError:description := "Não foi possivel localizar o código do produto para este produto: " + cDescProd
-                //throw varError
-            endif
-
-        endif
-*/
+        cCodProd := PADR(SuperGetMv('MS_PRODFRE',.F., 'FRETE'), TamSx3("A1_COD")[1] )
 
         //Pega informações de ICMS
         cClasFis := ""
         nBaseIcms := 0
         nAliqIcms := 0
         nValIcms := 0
+        nCompVl := 0
+
+
+        //Se for complemento verificar se tem complemento de valor
+        if ZZ1->ZZ1_ACAO == "C"
+            if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_VPREST, "_COMP")
+                if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_VPREST, "_VREC")
+                    nCompVl := val(oCTE:_CTEPROC:_CTE:_INFCTE:_VPREST:_VREC:TEXT)
+                endif
+            endif
+        endif
 
         if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS, "_ICMS00")
             if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00, "_CST")
@@ -1046,6 +720,8 @@ Static Function ProcessaCTE( cTipo )
         cTomador := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA3:_TOMA:TEXT","string")
         If ValType(cTomador) == 'U'
             cTomador := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA4:_TOMA:TEXT","string")
+        elseif empty(cTomador)
+            cTomador := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IDE:_TOMA4:_TOMA:TEXT","string")
         EndIf
 
         If type('cTomador') == 'U'
@@ -1069,7 +745,10 @@ Static Function ProcessaCTE( cTipo )
         nVlrFrete   := Val(nVlrFrete)
         
         //dados dos vendedores, passa por parametro o array com os dados dos vendedores
-        aXMLVend := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_COMPL:_OBSCONT","string")
+        aXMLVEND := {}
+        if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_COMPL, "_OBSCONT")
+            aXMLVend := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_COMPL:_OBSCONT","string")
+        endif
         aVends   := dadosVend(aXMLVend, nVlrFrete)
 
         //Seta a filial que corresponde ao CNPJ
@@ -1113,19 +792,29 @@ Static Function ProcessaCTE( cTipo )
 */
 
 
+
         //Posiciona o cliente pelo CNPJ do tomador
         //SA1->(dbSetOrder(3))
         //If SA1->(DbSeek( xFilial("SA1") + PADR(aTomador[1],TamSx3("A1_CGC")[1]) ))
-        aCliente := getCliente(cCNPJ := PADR(aTomador[1],TamSx3("A1_CGC")[1]), cIE := &("OCTE:" + aTomador[2] + ":_IE:TEXT"), cUF := &("OCTE:" + aTomador[3] + ":_UF:TEXT"))
+        cIE := ""
+        if AttIsMemberOf(&("OCTE:" + aTomador[2]), "_IE")
+            cIE := &("OCTE:" + aTomador[2] + ":_IE:TEXT")
+        endif
+
+
+        cCODCli := ""
+        cLojCli := ""
+        cNomCli := ""
+        RecLock('ZZ1', .F.)
+            ZZ1->ZZ1_CGC := aTomador[1]
+        ZZ1->(MsUnLock())
+        aCliente := getCliente(cCNPJ := PADR(aTomador[1],TamSx3("A1_CGC")[1]), cIE := cIE, cUF := &("OCTE:" + aTomador[3] + ":_UF:TEXT"))
         if aCliente[1] == .T.
             cCODCli := aCliente[2]//SA1->A1_COD
             cLojCli := aCliente[3]//SA1->A1_LOJA
             cNomCli := aCliente[4]//SA1->A1_NOME
             _lok := .T.
         Else
-            RecLock('ZZ1', .F.)
-                ZZ1->ZZ1_CGC := aTomador[1]
-            ZZ1->(MsUnLock())
             cMensagem :=  U_LOSF0004(&("oCTE:" + aTomador[2]),&("oCTE:" + aTomador[3]))
 
             if !empty(cMensagem)
@@ -1133,7 +822,7 @@ Static Function ProcessaCTE( cTipo )
                 varError:description := cMensagem
                 THROW varError
             else 
-                lOk := .T.
+                _lOk := .T.
             endif
         EndIf 
         
@@ -1141,7 +830,11 @@ Static Function ProcessaCTE( cTipo )
         //SA1->(dbSetOrder(3))
         If _lok
             //If SA1->(DbSeek( xFilial("SA1") + PADR(aTomador[1],TamSx3("A1_CGC")[1]) ))
-            aCliente := getCliente(cCNPJ := PADR(aTomador[1],TamSx3("A1_CGC")[1]), cIE := &("OCTE:" + aTomador[2] + ":_IE:TEXT"), cUF := &("OCTE:" + aTomador[3] + ":_UF:TEXT"))
+            cIE := ""
+            if AttIsMemberOf(&("OCTE:" + aTomador[2]), "_IE")
+                cIE := &("OCTE:" + aTomador[2] + ":_IE:TEXT")
+            endif
+            aCliente := getCliente(cCNPJ := PADR(aTomador[1],TamSx3("A1_CGC")[1]), cIE := cIE, cUF := &("OCTE:" + aTomador[3] + ":_UF:TEXT"))
             if aCliente[1] == .T.
                 RecLock('ZZ1', .F.)
                     ZZ1->ZZ1_FILCTE := cFilAnt
@@ -1157,16 +850,7 @@ Static Function ProcessaCTE( cTipo )
 
         //Verifica o remetente, se nao tiver, GRAVA NA SA1
         If _lok
-/*
-            lRem := .F.
-            if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE, "_REM")
-                if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM, "_CNPJ") .OR. AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM, "_CPF")
-                    if !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CNPJ:TEXT) .or. !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_REM:_CPF:TEXT)
-                        lRem := .T.
-                    endif
-                endif
-            endif
-*/
+
             If lRem
                 If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE,"_REM") 
                     If AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_REM,"_CNPJ") 
@@ -1212,6 +896,9 @@ Static Function ProcessaCTE( cTipo )
                 endif
             endif
             
+            cCODRem := ""
+            cLojRem := ""
+            cNomRem := ""
             aCliente := getCliente(cCNPJ := cCNPJRem, cIE := cIE, cUF := cUF)
             //SA1->(dbSetOrder(3))
             //If SA1->(DbSeek( xFilial("SA1") + PADR(cCNPJRem,TamSx3("A1_CGC")[1]) ))
@@ -1256,19 +943,10 @@ Static Function ProcessaCTE( cTipo )
         //EndIf
         
         If Empty(cTes)
-            gerError('TES nao localizada para o CFOP ' + cCFOP)
-            return 'TES nao localizada para o CFOP ' + cCFOP
+            gerError('TES nao localizada para o CFOP: ' + cCFOP + " classificacao fiscal: " + cClasFis)
+            return 'TES nao localizada para o CFOP ' + cCFOP + " classificacao fiscal: " + cClasFis
         EndIf
-/*
-        lDest := .F.
-        if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE, "_DEST")
-            if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST, "_CNPJ") .OR. AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST, "_CPF")
-                if !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_CNPJ:TEXT) .or. !empty(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST:_CPF:TEXT)
-                    lDest := .T.
-                endif
-            endif
-        endif
-*/
+
         cIE := ""
         if lDest
             if AttIsMemberOf(oCTE:_CTEPROC:_CTE:_INFCTE:_DEST,"_IE") 
@@ -1285,6 +963,9 @@ Static Function ProcessaCTE( cTipo )
         //Verifica o destinatario, se nao tiver, nao usa        
         //SA1->(dbSetOrder(3))
         //If SA1->(DbSeek(xFilial('SA1') + cCnpjDest))
+        cCODDes := ""
+        cLojDes := ""
+        cNomDes := ""
         aCliente := getCliente(cCNPJ := cCnpjDest, cIE := cIE, cUF := cUF)
         if aCliente[1] == .T.
             cCODDes := aCliente[2]//SA1->A1_COD
@@ -1297,6 +978,7 @@ Static Function ProcessaCTE( cTipo )
             else 
                 cMensagem :=   U_LOSF0004(oCTE:_CTEPROC:_CTE:_INFCTE:_RECEB, oCTE:_CTEPROC:_CTE:_INFCTE:_RECEB:_ENDERRECEB)//GravaSA1(cCnpjDest,cNomDest)
             endif
+            
             
             if !empty(cMensagem)
                 oError := ErrorClass():new()
@@ -1353,11 +1035,11 @@ Static Function ProcessaCTE( cTipo )
         
         TcQuery cQuery New Alias 'QRY'
 
-        If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) $ 'I,S' // Inclui|Processa a nota
+        If cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) $ 'I,S,C' // Inclui|Processa a nota
 
             validSerie(cYNumSer)
 
-            ProcCte(aVends)
+            cMensagem := ProcCte(aVends)
 
             //Caso seja concluído com sucesso o retorno será vazio
             if empty(cMensagem)
@@ -1367,7 +1049,7 @@ Static Function ProcessaCTE( cTipo )
                     ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
                     ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
                     ZZ2->ZZ2_status := "P"
-                    ZZ2->ZZ2_dtpros := dDataBase
+                    ZZ2->ZZ2_dtpros := Date()
                     ZZ2->ZZ2_hrpros := time()
                     ZZ2->ZZ2_log    := "Integração processada com sucesso"
                 ZZ2->( msUnLock() )
@@ -1382,7 +1064,7 @@ Static Function ProcessaCTE( cTipo )
             InutCTE()
         ElseIf cTipo == 'R'
             If QRY->(!EoF())
-                cMensagem := ProcFis(.T., QRY->RECNO) //Reprocessa dados fiscais
+                cMensagem := ProcFis(.T., QRY->RECNO, cCodProd) //Reprocessa dados fiscais
                 if !empty(cMensagem)
                     varError:genCode := 001
                     varError:description := cMensagem
@@ -1391,7 +1073,7 @@ Static Function ProcessaCTE( cTipo )
             EndIf
         ElseIf cTipo == 'E'
             If QRY->(!EoF())
-                cMensagem := ProcFis(.F., QRY->RECNO) // Exclui dados fiscais
+                cMensagem := ProcFis(.F., QRY->RECNO, cCodProd) // Exclui dados fiscais
                 if !empty(cMensagem)
                     varError:genCode := 001
                     varError:description := cMensagem
@@ -1414,7 +1096,7 @@ Static Function ProcessaCTE( cTipo )
             ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
             ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
             ZZ2->ZZ2_status := "E"
-            ZZ2->ZZ2_dtpros := dDataBase
+            ZZ2->ZZ2_dtpros := Date()
             ZZ2->ZZ2_hrpros := time()
             ZZ2->ZZ2_log    := iif(valtype(oError:description) == "U" ,"Erro desconhecido", oError:description)
         ZZ2->( msUnLock() )
@@ -1497,7 +1179,7 @@ Return cRet
 /*/{Protheus.doc} ProcFis
  * Metodo usado para exclusao e reprocessamento de dados fiscais da nota.
 /*/
-Static Function ProcFis(lReprocessa,nRecnoSF2)
+Static Function ProcFis(lReprocessa,nRecnoSF2, cCodProd)
     Local aRet := {}
     Local i, j
     Private nOrdem := 0
@@ -1507,6 +1189,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
     Private cCAMPO := ""
     Default nRecnoSF2 := 0
     Default lReprocessa := .F.
+    Default cCodProd := ""
 
 
     SF2->(DbGoTo(nRecnoSF2))
@@ -1542,7 +1225,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                 cChave  := aTabs[i][3]
                 
                 //Retorna os dados que devem ser preenchidos na tabela
-                aRet    := getArray(oCTE, cAlias, nRecnoSF2)          
+                aRet    := getArray(oCTE, cAlias, nRecnoSF2, cCodProd)          
                 (cAlias)->(DbSetOrder(nOrdem))
                 (cAlias)->(DbSeek(cChave))            
                 
@@ -1568,7 +1251,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
             SF2->(DbGoTo(nRecnoSF2))
             If lReprocessa .AND. Alltrim(ZZ1->ZZ1_ACAO) $ 'I,S'
                 //Cria o DT6, tabela do TMS, usada apenas para funcionar o registro fiscal
-                aDT6 := getArray(oCTE, 'DT6', nRecnoSF2)
+                aDT6 := getArray(oCTE, 'DT6', nRecnoSF2, cCodProd)
                 DT6->(DBOrderNickname("DT6CHVCTE"))
                 If !DT6->(DbSeek(xFilial("DT6") + ZZ1->ZZ1_CHAVE))
                     RecLock('DT6', .T.)            
@@ -1585,16 +1268,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                     ZZ1->ZZ1_STAFIS := 'P'
                 ZZ1->(MsUnLock())
 
-                /*    
-                For nZ := 1 To len(aNFS)
-                    If !ZA8->(DbSeek(xFilial("ZA8") + ZZ1->ZZ1_CHAVE + PADR(aNFS[nZ],Len(ZZ1->ZZ1_CHAVE)) ))
-                        RecLock('ZA8', .T.)
-                            ZA8->ZA8_CHVCTE := ZZ1->ZZ1_CHAVE
-                            ZA8->ZA8_CHVNFE := aNFS[nZ]
-                        ZA8->(MsUnLock())
-                    EndIf
-                Next
-                */
+
             Else
                 //Exclui DT6
                 DT6->(DBOrderNickname("DT6CHVCTE"))
@@ -1607,15 +1281,7 @@ Static Function ProcFis(lReprocessa,nRecnoSF2)
                         ZZ1->ZZ1_STAFIS := 'A'
                     ZZ1->(MsUnLock())
                 EndIf
-                /*
-                For nZ := 1 To len(aNFS)
-                    If ZA8->(DbSeek(xFilial("ZA8") + ZZ1->ZZ1_CHAVE + PADR(aNFS[nZ],Len(ZZ1->ZZ1_CHAVE)) ))
-                        RecLock('ZA8', .F.)
-                            ZA8->(DbDelete())
-                        ZA8->(MsUnLock())
-                    EndIf
-                Next
-                */
+    
                 
             EndIf
             RECOVER
@@ -1655,6 +1321,11 @@ Static Function ProcCte(aVends)
     Local nDiasVenc := SuperGetMv("MS_DVENCT", .F., 365)
     Local _cNatureza := Alltrim(SuperGetMv("MS_NATCTE",.F.,"110101"))
     nDiasVenc := IIF( ValType(nDiasVenc) == 'C', Val(Alltrim(nDiasVenc)),nDiasVenc  )
+
+    SF2->( DBOrderNickname( "IDXCHVNF" ) )
+    if SF2->( dbSeek( xFilial("SF2") + cCHVNFE ) )
+        return 'Nota fiscal ' + cYNumNF + ' serie ' + cYNumSer + ' ja cadastrada no sistema.'
+    endif
    
     oPedido:lMostrarErro := .F.
 
@@ -1677,7 +1348,18 @@ Static Function ProcCte(aVends)
     SA1->(DbSetOrder(1))
     SA1->(DbSeek(xFilial('SA1') + cCODCli + cLojCli))
 
-	oCrud:Set('C5_TIPO'		, 'N'	        )
+    if ZZ1->ZZ1_ACAO == "C" //Caso for complemento inclui o tipo de acordo
+
+        if nValIcms > 0 .and. nCompVl > 0
+            oCrud:Set('C5_TIPO'		, 'C'	        )
+        elseif nValIcms > 0
+            oCrud:Set('C5_TIPO'		, 'I'	        )
+        else 
+            oCrud:Set('C5_TIPO'		, 'C'	        )
+        endif
+    else 
+	    oCrud:Set('C5_TIPO'		, 'N'	        )
+    endif
 	oCrud:Set('C5_EMISSAO'	, dDatabase     )	
 	oCrud:Set('C5_CLIENTE'	, SA1->A1_COD	)
 	oCrud:Set('C5_LOJACLI'	, SA1->A1_LOJA	)
@@ -1689,6 +1371,7 @@ Static Function ProcCte(aVends)
 	oCrud:Set('C5_CMUNOR'	, RIGHT(cMunOrig, 5)       ) 	
 	oCrud:Set('C5_TPFRETE'	, cTpFrete      ) 	
 	oCrud:Set('C5_NATUREZ'	, _cNatureza      ) 	
+	oCrud:Set('C5_MENNOTA'	, xObs      ) 	
 
 	oCrud:Set('C5_CLASFIS'	, cClasFis      ) 	
 
@@ -1723,14 +1406,31 @@ Static Function ProcCte(aVends)
     //cProduto    := PADR(SuperGetMv('MS_PRODFRE',.F., 'FRETE          '), Len(SB1->B1_COD) )
     oCrud:set('C6_PRODUTO'	, cCodProd)
     oCrud:set('C6_ITEM'		, cItem)
-    oCrud:set('C6_QTDVEN'	, 1)
-    oCrud:set('C6_QTDLIB'	, 1)
+    if ZZ1->ZZ1_ACAO == "C"
+        oCrud:set('C6_QTDVEN'	, 0)
+        oCrud:set('C6_QTDLIB'	, 0)
+
+        SF2->(DBOrderNickname("IDXCHVNF"))
+        if SF2->( dbSeek( xFilial("SF2") + cChvOld ) )
+            oCrud:set('C6_NFORI'	, SF2->F2_DOC)
+            oCrud:set('C6_SERIORI'	, SF2->F2_SERIE)
+            oCrud:set('C6_ITEMORI'	, "01")
+        else 
+            return "Não foi possível localizar a NF Original do complemento. CHAVE ORIGEM: " + cChvOld
+        endif
+    else 
+        oCrud:set('C6_QTDVEN'	, 1)
+        oCrud:set('C6_QTDLIB'	, 1)
+        oCrud:set('C6_NFORI'	, "")
+        oCrud:set('C6_SERIORI'	, "")
+        oCrud:set('C6_ITEMORI'	, "01")
+    endif
     oCrud:set('C6_PRCVEN'	, nVlrFrete)
     oCrud:set('C6_PRUNIT'	, nVlrFrete)
+    oCrud:set('C6_VALOR'	, nVlrFrete)
     oCrud:set('C6_TES'		, cTes) 
-    oCrud:set('C6_CONTA'	, GetConta()) 
+    oCrud:set('C6_CONTA'	, GetConta(cCodProd)) 
 
-    //oCrud:set('C6_CLASFIS'	, GetConta()) 
     oCrud:set('C6_CF'	    , cCFOP) 
 
     aAdd(oPedido:SC5, oCrud) 
@@ -1770,6 +1470,9 @@ Static Function ProcCte(aVends)
         SF2->(dbSetOrder(1))
         SF2->(dbgoto(nRecNoSF2))
         RecLock("SF2", .F.)
+            if empty(SF2->F2_CHVNFE)
+                SF2->F2_CHVNFE := cCHVNFE
+            endif
             SF2->F2_CLASPRO := cClasProd
             SF2->F2_TPCTEGW := cTPCTE
             SF2->F2_TPSERGW := cTPSERV
@@ -1780,6 +1483,12 @@ Static Function ProcCte(aVends)
             SF2->F2_VIBSMUN := nVIBSMUN
             SF2->F2_PCBS    := nPCBS
             SF2->F2_VCBS    := nVCBS
+
+            SF2->F2_UFORIG := cUFORIG
+            SF2->F2_CMUNOR := RIGHT(cMunOrig, 5)
+            SF2->F2_UFDEST := cUFDEST
+            SF2->F2_CMUNDE := RIGHT(cMunDest, 5)
+
         SF2->( msUnLock() )
         
         procMinutas(SF2->F2_FILIAL + SF2->F2_DOC + SF2->F2_SERIE + SF2->F2_CLIENTE + SF2->F2_LOJA + SF2->F2_FORMUL + SF2->F2_TIPO)
@@ -1805,7 +1514,7 @@ Static Function ProcCte(aVends)
 
         //Posiciona o SF2 para montar os dados que serao usados para as tabelas
         // SF2->(DbGoTo(nRecNoSF2))        
-        ProcFis(.T.,nRecNoSF2)    
+        ProcFis(.T.,nRecNoSF2, cCodProd)    
     EndIf
 
 Return cMensagem
@@ -1981,10 +1690,16 @@ Return aRet
 /*/{Protheus.doc} getArray
  * Funcao que retorna um arary com os campos e dados que deverao ser gravados nas tabelas
 /*/
-Static Function getArray(oCTE, cTab, nRecNoSF2)
+Static Function getArray(oCTE, cTab, nRecNoSF2, cCodProd)
     Local aRet := {}
     Local i
     Local cAtivCPB   := SuperGetMv('MS_ATIVCPB',.F., '00000140')
+    Local cConta := ""
+    default cCodProd := ""
+
+    if !empty(cCodProd)
+        cConta := GetConta(cCodProd)
+    endif
 
     SF2->(DbGoTo(nRecNoSF2))
     nAliqCPB := SuperGetMv('MS_ALIQCPB', .F., 1.5)  
@@ -1998,7 +1713,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         nAliqIcms := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_pICMS:TEXT","string")
         nValIcms  := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT","string")
         If ValType( nAliqIcms) != 'U' .AND. ValType( nValIcms) != 'U'
-            aAdd(aRet, {'F2_ALIQICM', Val(nAliqIcms) })        
+            aAdd(aRet, {'F2_BASEICM', nBaseIcms })            
             aAdd(aRet, {'F2_VALICM', Val(nValIcms) })        
         EndIf                      
     ElseIf cTab == 'SD2'
@@ -2007,10 +1722,11 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         aAdd(aRet, {'D2_ALIQCPB', nAliqCPB})
         aAdd(aRet, {'D2_VALCPB' , Round(SF2->F2_VALMERC * (nAliqCPB / 100),2) })
         aAdd(aRet, {'D2_BASECPB', SF2->F2_VALMERC })
-        aAdd(aRet, {'D2_CONTA', GetConta() })
+        aAdd(aRet, {'D2_CONTA', cConta })
         nAliqIcms := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_pICMS:TEXT","string")
         nValIcms  := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT","string")
         If ValType( nAliqIcms) != 'U' .AND. ValType( nValIcms) != 'U'
+            aAdd(aRet, {'D2_BASEICM', nBaseIcms })        
             aAdd(aRet, {'D2_PICM', Val(nAliqIcms) })        
             aAdd(aRet, {'D2_VALICM', Val(nValIcms) })        
         EndIf  
@@ -2041,13 +1757,14 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         
         aAdd(aRet, {'F3_CODRSEF', oCTE:_CTEPROC:_PROTCTE:_INFPROT:_CSTAT:TEXT })
         aAdd(aRet, {'F3_ATIVCPB' , cAtivCPB})
-        aAdd(aRet, {'F3_CONTA' , GetConta()})
+        aAdd(aRet, {'F3_CONTA' , cConta})
         
 
         nAliqIcms := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_pICMS:TEXT","string")
         nValIcms  := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT","string")
         If ValType( nAliqIcms) != 'U' .AND. ValType( nValIcms) != 'U'
-            aAdd(aRet, {'F3_ALIQICM', Val(nAliqIcms) })        
+            aAdd(aRet, {'F3_ALIQICM', Val(nAliqIcms) })   
+            aAdd(aRet, {'F3_BASEICM', nBaseIcms })   
             aAdd(aRet, {'F3_VALICM', Val(nValIcms) })        
         EndIf  
 
@@ -2100,7 +1817,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         aAdd(aRet, {'FT_ALIQCOF' , nAliqCof})
         aAdd(aRet, {'FT_VALCOF'  , Round(SF2->F2_BASIMP5 * nAliqCof / 100,2)})
         
-        aAdd(aRet, {'FT_CONTA'  , GetConta()})
+        aAdd(aRet, {'FT_CONTA'  , cConta})
 
         aAdd(aRet, {'FT_ALIQCPB', nAliqCPB })
         aAdd(aRet, {'FT_VALCPB' , Round(SF2->F2_VALMERC * (nAliqCPB / 100),2)})
@@ -2113,6 +1830,7 @@ Static Function getArray(oCTE, cTab, nRecNoSF2)
         nValIcms  := WSAdvValue(oCTE,"_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT","string")
         If ValType( nAliqIcms) != 'U' .AND. ValType( nValIcms) != 'U'
             aAdd(aRet, {'FT_ALIQICM', Val(oCTE:_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_pICMS:TEXT) })        
+            aAdd(aRet, {'FT_BASEICM', nBaseIcms })        
             aAdd(aRet, {'FT_VALICM', Val(oCTE:_CTEPROC:_CTE:_INFCTE:_IMP:_ICMS:_ICMS00:_vICMS:TEXT) })        
         EndIf
 
@@ -2357,6 +2075,7 @@ Static Function VldExist()
         lRet := .T.
         QRYZZ1U->(dbSkip())
     EndIf
+    QRYZZ1U->( dbCloseArea() )
 
     
 Return lRet
@@ -2515,6 +2234,7 @@ Static Function GetSeqDUY()
         cRet :=  IIF(Empty(QRYDUY->MAX), cRet , Soma1(QRYDUY->MAX))
         QRYDUY->(dbSkip())
     EndIf
+    QRYDUY->(dbclosearea())
 
 Return cRet
 
@@ -2619,9 +2339,20 @@ Static Function retCodVEnd(aDados)
 
 Return cRet
 
-Static Function GetConta()
-    Local cRet      := Alltrim(SuperGetMv("MS_CTACTE", .f., ''))
+Static Function GetConta(cCodProd)
+    Local cRet      := ""
+    default cCodProd := ""
+    
+    if empty(cCodProd)
+        return ""
+    endif
 
+    cRet := POSICIONE("SB1", 1, xFilial( "SB1" ) + alltrim(cCodProd), "B1_CONTA")
+/*    
+    if empty(cRet)
+        cRet := Alltrim(SuperGetMv("MS_CTACTE", .f., ''))
+    endif
+*/
 Return cRet
 
 Static Function CancFis()
@@ -2874,7 +2605,29 @@ Static Function getClasPro(cCodProd)
 
     if QRYX5->quantidade == 0
 
-        cCodigo := getSx8Num("SX5", "X5_CHAVE")
+        cCodigo := ""
+
+        if select('SX5MAX') > 0
+            SX5MAX->(dbclosearea())
+        endif
+
+        BeginSql alias 'SX5MAX'
+            SELECT max(x5_chave) chave
+                FROM %table:SX5% SX5
+                WHERE SX5.X5_FILIAL = %xFilial:SX5% AND
+                    x5_tabela = 'CP' AND
+                LENGTH(trim(x5_chave))  = 3 AND
+                SX5.D_E_L_E_T_ <> '*'
+        EndSql
+
+        if SX5MAX->( !Eof() )
+            cCodigo := soma1( alltrim(SX5MAX->chave ) )
+        endif
+
+        if empty( cCodigo )
+            return ""
+        endif
+        SX5MAX->( dbclosearea() )
 
         recLock('SX5', .T.)
             SX5->X5_FILIAL := xFilial("SX5")
@@ -2916,7 +2669,7 @@ Static Function gerError(cMensagem)
         ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
         ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
         ZZ2->ZZ2_status := "E"
-        ZZ2->ZZ2_dtpros := dDataBase
+        ZZ2->ZZ2_dtpros := Date()
         ZZ2->ZZ2_hrpros := time()
         ZZ2->ZZ2_log    := cMensagem
     ZZ2->( msUnLock() )
@@ -2945,15 +2698,18 @@ Static Function getCliente(cCNPJ, cIE, cUF)
 
     cIE := formatAlfa( cIE )
 
-    if !Empty(cIE)
-        If alltrim( CUF ) == "PE"
-            cIE := strzero( val( cIE ), 9 )
-        Elseif alltrim( CUF ) == "MG"
-            cIE := strzero( val( cIE ), 13 )
-        EndIf
+    if Empty(cIE)
+        cIE := "ISENTO"
+    elseIf alltrim( CUF ) == "PE"
+        cIE := strzero( val( cIE ), 9 )
+    Elseif alltrim( CUF ) $ "MG,DF"
+        cIE := strzero( val( cIE ), 13 )
+    Elseif alltrim( CUF ) == "RS"
+        cIE := strzero( val( cIE ), 10 )
+    EndIf
 
-        cWhere := "% AND A1_INSCR = '" + alltrim(cIE) + "' %"
-    endif
+    cWhere := "% AND A1_INSCR = '" + alltrim(cIE) + "' %"
+//    endif
 
     if Empty(cCNPJ)
         return {.F., "CNPJ não pode ser vazio"}

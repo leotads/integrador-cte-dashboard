@@ -128,7 +128,11 @@ export class DashboardComponent {
   }
 
   async getQuantityDocuments() {
-    this.protheusService.getProtheus('getQuantityDocuments')
+    this.protheusService
+      .getProtheus(
+        'getQuantityDocuments',
+        JSON.stringify({ date: this.startDate, status: '' })
+      )
       .subscribe({
         next: (result) => {
           this.numberOfDocuments = result;
@@ -137,7 +141,11 @@ export class DashboardComponent {
   }
   
   async getQuantityIntegrated() {
-    this.protheusService.getProtheus('getQuantityIntegrated')
+    this.protheusService
+      .getProtheus(
+        'getQuantityIntegrated',
+        JSON.stringify({ date: this.startDate, status: 'P' })
+      )
       .subscribe({
         next: (result) => {
           this.integratedQuantity = result;
@@ -146,7 +154,11 @@ export class DashboardComponent {
   }
 
   async getQuantityOpenDocuments() {
-    this.protheusService.getProtheus('getQuantityOpenDocuments')
+    this.protheusService
+      .getProtheus(
+        'getQuantityOpenDocuments',
+        JSON.stringify({ date: this.startDate, status: 'A' })
+      )
       .subscribe({
         next: (result) => {
           this.numberOpenOfDocuments = result;
@@ -155,7 +167,11 @@ export class DashboardComponent {
   }
 
   async getQuantityErrors() {
-    this.protheusService.getProtheus('getQuantityErrors')
+    this.protheusService
+      .getProtheus(
+        'getQuantityErrors',
+        JSON.stringify({ date: this.startDate, status: 'E' })
+      )
       .subscribe({
         next: (result) => {
           this.numberOfErrors = result;
@@ -254,6 +270,10 @@ export class DashboardComponent {
   }
 
   changeDate() {
+    this.getQuantityDocuments()
+    this.getQuantityIntegrated()
+    this.getQuantityOpenDocuments()
+    this.getQuantityErrors()
     this.chartDocumentsPerDay()
     this.chartDocumentsPerMonth()
     this.chartDocumentsPerYear()

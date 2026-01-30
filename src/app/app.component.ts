@@ -11,6 +11,8 @@ import {
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { MonitorComponent } from './pages/monitor/monitor.component';
 
+import { ProtheusService } from './services/protheus.service';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -33,11 +35,13 @@ export class AppComponent {
   readonly menus: Array<PoMenuItem> = [
     { label: 'Dashboard', action: () => this.onAlterarPage("Dashboard", {}), icon: 'an an-chart-line', shortLabel: 'Dashboard' },
     { label: 'Monitor', action: () => this.onAlterarPage("Monitor", {}), icon: 'an an-monitor', shortLabel: 'Monitor' },
+    { label: 'Relatorio', action: () => this.relatorio(), icon: 'an an-file-text', shortLabel: 'Monitor' },
   ];
 
   constructor(
     private proJsToAdvplService: ProJsToAdvplService,
-    private proAppConfigService: ProAppConfigService
+    private proAppConfigService: ProAppConfigService,
+    private protheusService: ProtheusService,
   ) {
     if (!this.proAppConfigService.insideProtheus()) {
       this.proAppConfigService.loadAppConfig();
@@ -54,6 +58,10 @@ export class AppComponent {
 
     console.log('filters', filters)
     console.log('page', newPage)
+  }
+
+  relatorio() {
+   this.proJsToAdvplService.jsToAdvpl('openRelatorio', '');
   }
 
 }

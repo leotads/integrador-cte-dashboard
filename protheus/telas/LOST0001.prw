@@ -40,13 +40,13 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
 
   Do Case
     Case cType == 'getQuantityDocuments'
-      oWebChannel:AdvPLToJS('getQuantityDocuments', cValToChar(qtdRegists()))
+      oWebChannel:AdvPLToJS('getQuantityDocuments', cValToChar(qtdRegists(cContent)))
     Case cType == 'getQuantityIntegrated'
-      oWebChannel:AdvPLToJS('getQuantityIntegrated', cValToChar(qtdRegists('P')))
+      oWebChannel:AdvPLToJS('getQuantityIntegrated', cValToChar(qtdRegists(cContent)))
     Case cType == 'getQuantityOpenDocuments'
-      oWebChannel:AdvPLToJS('getQuantityOpenDocuments', cValToChar(qtdRegists('A')))
+      oWebChannel:AdvPLToJS('getQuantityOpenDocuments', cValToChar(qtdRegists(cContent)))
     Case cType == 'getQuantityErrors'
-      oWebChannel:AdvPLToJS('getQuantityErrors', cValToChar(qtdRegists('E')))
+      oWebChannel:AdvPLToJS('getQuantityErrors', cValToChar(qtdRegists(cContent)))
     Case cType == 'chartDocumentsPerDay'
       oWebChannel:AdvPLToJS('chartDocumentsPerDay', reqPerDay(cContent))
     Case cType == 'chartDocumentsPerMonth'
@@ -65,6 +65,9 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
       oWebChannel:AdvPLToJS('reprocessDocument', reproDocto(cContent))
     Case cType == 'getLog'
       oWebChannel:AdvPLToJS('getLog', encodeutf8(getLog(cContent)))
+    Case cType == 'openRelatorio'
+      //oWebChannel:AdvPLToJS('openRelatorio', encodeutf8(getLog(cContent)))
+      u_relcte()
   End
 
 Return .T.
@@ -81,15 +84,26 @@ Return .T.
   (examples)
   @see (links_or_references)
 /*/
-Static Function qtdRegists(cStatus)
+Static Function qtdRegists(cContent)
 
   Local nQuantidade := 0
   Local cWhere := "% %"
-  default cStatus := ""
+  local jContent    := JsonObject():New()
 
-  if !empty(cStatus)
-    cWhere := "% AND ZZ1.ZZ1_STATUS = '" + alltrim(cStatus) + "' %"
+//  default cStatus := ""
+
+  jContent:fromJson(cContent)
+  
+  if !empty(jContent["date"])
+    aDate := strtokarr2(jContent["date"], "-")
+    cWhere := " AND ZZ1_DATA = '" + aDate[1] + aDate[2] + aDate[3] + "' "
   endif
+
+  if !empty(jContent["status"])
+    cWhere += " AND ZZ1.ZZ1_STATUS = '" + alltrim(jContent["status"]) + "' "
+  endif
+
+  cWhere := "% " + cWhere + " %"
 
   BeginSQL alias 'ZZ1TOT'
     SELECT COUNT(*) quantidade
@@ -97,6 +111,8 @@ Static Function qtdRegists(cStatus)
      WHERE ZZ1.%notdel%
      %exp:cWhere%
   EndSql
+
+  conout(getlastquery()[2])
   
   if ZZ1TOT->( !eof() )
     nQuantidade := ZZ1TOT->quantidade
@@ -863,8 +879,7 @@ Static Function getLog(cContent)
     SELECT zz2.R_E_C_N_O_ recno
       FROM %table:ZZ2% zz2 
      WHERE zz2.ZZ2_codzz1 = %exp:cCodigo% AND 
-           zz2.%notdel% AND 
-           ROWNUM = 1
+           zz2.%notdel%
      ORDER BY R_E_C_N_O_ desc
   Endsql
 

@@ -1,0 +1,98 @@
+<po-page-default>
+  <div class="po-row" style="justify-content: space-evenly;">
+    <po-widget class="po-sm-12 po-md-4 po-lg-4 po-xl-4 po-mb-4">
+      <div class="po-text-center"><img src="assets/img/grupolos.png" alt="Logo da Empresa" class="logo"></div>
+    </po-widget>
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('')" p-title="Total">
+      <div class="po-font-display po-text-center">{{numberOfDocuments || 0}}</div>
+    </po-widget>
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('A')" p-title="Abertos">
+      <div class="po-font-display po-text-center">{{numberOpenOfDocuments || 0}}</div>
+    </po-widget>
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('P')" p-title="Integrados">
+      <div class="po-font-display po-text-center">{{integratedQuantity || 0}}</div>
+    </po-widget>
+    <po-widget class="po-sm-12 po-md-2 po-lg-2 po-xl-2 po-mb-2 widgetButton" (p-click)="openMonitor('E')" p-title="Erros">
+      <div class="po-font-display po-text-center">{{numberOfErrors || 0}}</div>
+    </po-widget>
+  </div>
+  <po-divider></po-divider>
+  <div class="po-row" style="justify-content: end; align-items: center;">
+    <div>
+      <div class="loading-box">
+        <div class="loading-grid">
+          <div class="spinner spinner-rotate"></div>
+
+          <div class="info">
+            <span class="title">Última atualização: </span>
+            <span class="info"><strong id="lastUpdate">06/01/2026 11:04:00</strong></span>
+          </div>
+
+          <button id="toggleBtn" class="stop-btn">Parar</button>
+        </div>
+      </div>
+    </div>
+    <div class="po-sm-3">
+      <po-datepicker
+        name="startDate"
+        [(ngModel)]="startDate"
+        p-format="dd/mm/yyyy"
+        p-required
+        [p-max-date]="endDate"
+        (p-change)="changeDate()"
+      >
+      </po-datepicker>
+    </div>
+  </div>
+  <po-divider></po-divider>
+  <div class="po-row po-mt-0 po-mb-3" style="justify-content: space-between; align-items: center;">
+    <po-tabs>
+      <po-tab [p-active]="true" p-label="Dia" (p-click)="chartDocumentsPerDay()">
+        <div class="po-row">
+            <po-chart
+              class="po-md-12 "
+              p-title="Requisições por dia"
+              [p-options]="optionsChart"
+              [p-categories]="chartDocumentsPerDayCategories"
+              [p-series]="chartDocumentsPerDaySeries"
+            >
+            </po-chart>
+        </div>
+      </po-tab>
+      <po-tab  p-label="Mês" (p-click)="chartDocumentsPerMonth()">
+        <div class="po-row">
+          <po-chart
+            class="po-md-12"
+            p-title="Requisições por mês"
+            [p-options]="optionsChart"
+            [p-categories]="chartDocumentsPerMonthCategories"
+            [p-series]="chartDocumentsPerMonthSeries"
+          >
+          </po-chart>
+        </div>
+      </po-tab>
+      <po-tab p-label="Ano" (p-click)="chartDocumentsPerYear()">
+        <po-chart
+          class="po-md-12"
+          p-title="Requisições por ano"
+          [p-options]="optionsChart"
+          [p-categories]="chartDocumentsPerYearCategories"
+          [p-series]="chartDocumentsPerYearSeries"
+        >
+        </po-chart>
+      </po-tab>
+      <po-tab p-label="Todos" (p-click)="chartDocumentsPerYears()">
+        <po-chart
+          class="po-md-12"
+          p-title="Quantidade de requisições"
+          [p-options]="optionsChart"
+          [p-categories]="chartDocumentsPerYearsCategories"
+          [p-series]="chartDocumentsPerYearsSeries"
+        >
+        </po-chart>
+      </po-tab>
+    </po-tabs>
+  </div>
+</po-page-default>
+
+<po-loading-overlay [hidden]="isLoading"></po-loading-overlay>
