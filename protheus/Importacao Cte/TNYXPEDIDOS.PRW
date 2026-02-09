@@ -354,6 +354,7 @@ METHOD GERANF() CLASS TNYXPEDIDOS
 		else
 			lMsErroAuto	:= .T.
 			lResult	:= .F.
+			::retorno := "NENHUM ITEM PARA FATURAR NO PEDIDO " + oAuxPed:Get('C5_NUM')
 		endif
 		dDataBase := dAux
 	next
@@ -479,6 +480,7 @@ METHOD QUALPEDIDO() CLASS TNYXPEDIDOS
 	
 	if QRY->(EOF())
 		lResult	:= .F.
+		::RETORNO := 'TNYXPEDIDOS:QUALPEDIDO, NENHUM PEDIDO ENCONTRADO PARA A NOTA FISCAL INFORMADA.'
 		CONOUT("====================================="+cSaida+"========================================")
 	else
 
@@ -573,6 +575,7 @@ METHOD CANCELNF() CLASS TNYXPEDIDOS
 		//cArquivo := FwTimeStamp() + "_cancela_nf.txt"
 		MostraErro( GetSrvProfString("Startpath","") , cArqErro )
 		cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArqErro )
+		::RETORNO := "TNYXPEDIDOS:CANCELNF, ERRO AO CANCELAR A NOTA FISCAL " + cDoc + " " + cSerie + ", " + cMsg
 		lResult	:= .F.
 	EndIf   
 return lResult  
@@ -677,7 +680,7 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 		
 		//Peso/carga
 		aAdd(aCamposSC5, {"C5_PBRUTO" ,oPedAux:Get('C5_PBRUTO')        			,Nil})
-		aAdd(aCamposSC5, {"C5_VOLUME1" ,oPedAux:Get('C5_VOLUME1')        			,Nil})
+		aAdd(aCamposSC5, {"C5_VOLUME1" ,round(oPedAux:Get('C5_VOLUME1'),0)        			,Nil})
 
 		aAdd(aCamposSC5, {"C5_TPFRETE" ,oPedAux:Get('C5_TPFRETE')        			,Nil})
 		aAdd(aCamposSC5, {"C5_CLASFIS" ,oPedAux:Get('C5_CLASFIS')        			,Nil})
@@ -764,6 +767,7 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 				
 				MostraErro( GetSrvProfString("Startpath","") , cArqErro )
 				cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArqErro )
+				::retorno := cMsg
 		else
 			if nAcao	<> 5
 				oPedAux:Set('C5_NUM'		, SC5->C5_NUM		)

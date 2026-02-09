@@ -25,7 +25,9 @@ import {
   PoDisclaimerModule,
   PoPageSlideComponent,
   PoDisclaimer,
-  PoDisclaimerGroupRemoveAction
+  PoDisclaimerGroupRemoveAction,
+  PoDropdownAction,
+  PoDropdownModule
 } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { ProtheusService } from '../../services/protheus.service';
@@ -49,7 +51,8 @@ import { CommonModule } from '@angular/common';
     PoDividerModule,
     PoContextTabsModule,
     PoTabsModule,
-    PoDisclaimerGroupModule
+    PoDisclaimerGroupModule,
+    PoDropdownModule 
 ],
   templateUrl: './monitor.component.html',
   styleUrls: ['./monitor.component.css']
@@ -206,6 +209,10 @@ export class MonitorComponent {
       ],
       optionsMulti: true
     },
+  ];
+  actionsDropdown: Array<PoDropdownAction> = [
+    { label: 'Em Aberto', action: () => this.proccessAll("A") },
+    { label: 'Com Erros', action: () => this.proccessAll("E") },
   ];
   
   actions: Array<PoTableAction> = [
@@ -460,6 +467,26 @@ export class MonitorComponent {
     this.pagination = {page: 1, pageSize: 10};
     
     this.onLoading();
+  }
+
+  proccessAll(status: string) {
+    this.isLoadingDialog = false;
+
+    this.protheusService.getProtheus(
+      'proccessAll',
+      JSON.stringify({ status: status })
+    ).subscribe({
+      next: (result) => {
+        
+        if (result === "") {
+          this.poNotification.success("O processamento foi executado e está sendo realizado em segundo plano!");
+        } else {
+          this.poNotification.error(result);
+        }
+      },
+      error: (error) => this.poNotification.error("Não foi possível processar todos!"),
+      complete: () => this.isLoadingDialog = true
+    });
   }
 
 

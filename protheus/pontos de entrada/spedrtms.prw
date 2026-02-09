@@ -18,6 +18,8 @@ User Function SPEDRTMS()
     Local cInd_Oper  := ""
     Local cInd_Emit  := ""
     Local cModelo    := AModNot(aCmpAntSFT[42])
+
+    SET DELETED OFF
  
     //Campos contidos no array aCmpAntSFT:
     //01 - Doc. Fiscal
@@ -118,6 +120,15 @@ User Function SPEDRTMS()
  
     If cReg == "D100"
  
+        /*
+        Consultar o conteúdo do campo C5_TPFRETE e fazer esse De/Para:
+        C = 0
+        F = 1
+        T = 2
+        */
+        cInd_Frt := aCmpAntSFT[21]
+        cTpCteGW := "0"
+        cChvCteRef := ""
         If  aCmpAntSFT[43] == "S"
  
             //Caso for inclusao
@@ -131,6 +142,19 @@ User Function SPEDRTMS()
 
             cCodMunOri := UfCodIBGE(SF2->F2_UFORIG) + AllTrim(SF2->F2_CMUNOR)
             cCodMunDes := UfCodIBGE(SF2->F2_UFDEST) + AllTrim(SF2->F2_CMUNDE)
+
+            if SF2->F2_TPFRETE == "C"
+                cInd_Frt := "0"
+            elseif SF2->F2_TPFRETE == "F"
+                cInd_Frt := "1"
+            elseif SF2->F2_TPFRETE == "T"
+                cInd_Frt := "2" 
+            endif
+
+            if SF2->F2_TPCTEGW == "3"
+                cTpCteGW := "3"
+                cChvCteRef := SF2->F2_CHAVOLD
+            endif
  
         Else
             //Caso for inclusao
@@ -154,7 +178,8 @@ User Function SPEDRTMS()
             vValBSICM  := 0 
             vValICMS   := 0
         endif
- 
+
+
  
         AAdd(vLinha,    "D100")         //01 REG
         AAdd(vLinha,    cInd_Oper)      //02 IND_OPER
@@ -168,11 +193,11 @@ User Function SPEDRTMS()
         AAdd(vLinha,    aCmpAntSFT[25]) //10 CHV_CTE
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", aCmpAntSFT[5]))  //11 DT_DOC
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", aCmpAntSFT[5]))  //12 DT_A_P
-        AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", "0" ) )            //13 TP_CTe
-        AAdd(vLinha,    "")             //14 CHV_CTe_REF
+        AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", cTpCteGW ) )            //13 TP_CTe
+        AAdd(vLinha,    cChvCteRef)             //14 CHV_CTe_REF
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", vValDoc ) )        //15 VL_DOC
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "",0 ) )              //16 VL_DESC
-        AAdd(vLinha,    IIf(cModelo$"63" .or. !empty(aCmpAntSFT[7]), "", aCmpAntSFT[21])) //17 IND_FRT
+        AAdd(vLinha,    IIf(cModelo$"63" .or. !empty(aCmpAntSFT[7]), "", cInd_Frt)) //17 IND_FRT
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", vValServ ) )       //18 VL_SERV
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", vValBSICM ) )      //19 VL_BC_ICMS
         AAdd(vLinha,    iif(!empty(aCmpAntSFT[7]), "", vValICMS ) )       //20 VL_ICMS
@@ -230,4 +255,6 @@ User Function SPEDRTMS()
  
     EndIf
  
+    SET DELETED ON
+
 Return aRet

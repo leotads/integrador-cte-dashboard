@@ -6,8 +6,20 @@
 		},
 		{
 			"label": "sigafat"
+		},
+		{
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"I"
+			],
+			"label": "U_synsa1gw"
+		},
+		{
+			"label": "u_losf001h"
 		}
 	],
-	"lastProgramExecuted": "sigamdi",
+	"lastProgramExecuted": "u_losf001i",
 	"lastProgramArguments": []
 }

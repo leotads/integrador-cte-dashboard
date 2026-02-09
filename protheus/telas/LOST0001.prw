@@ -65,6 +65,9 @@ Static Function JsToAdvpl(oWebChannel,cType,cContent)
       oWebChannel:AdvPLToJS('reprocessDocument', reproDocto(cContent))
     Case cType == 'getLog'
       oWebChannel:AdvPLToJS('getLog', encodeutf8(getLog(cContent)))
+    Case cType == 'proccessAll'
+      conout("Chamou proccess all")
+      oWebChannel:AdvPLToJS('proccessAll', proccesAll(cContent))
     Case cType == 'openRelatorio'
       //oWebChannel:AdvPLToJS('openRelatorio', encodeutf8(getLog(cContent)))
       u_relcte()
@@ -591,6 +594,10 @@ Static Function getAllDocs(cContent)
   Local cWhere := ""
   local i := 0
 
+  If Select(cAlias_) > 0
+    (cAlias_)->( dbclosearea() )
+  endif
+
 
   jContent:fromJson(cContent)
 
@@ -895,3 +902,23 @@ Static Function getLog(cContent)
   QRY->( dbCloseArea() )  
 
 Return oData:toJson()
+
+/*/{Protheus.doc} proccesAll
+  (long_description)
+  @type  Static Function
+  @author user
+  @since 30/01/2026
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  @example
+  (examples)
+  @see (links_or_references)
+/*/
+Static Function proccesAll(cContent)
+  Local jContent := JsonObject():new()
+
+  jContent:fromJson(cContent)
+  conout("Iniciando processamento de todos os documentos...")
+  startJob('U_LOSF001I', GetEnvServer(), .F., "0", jContent["status"])
+Return ""

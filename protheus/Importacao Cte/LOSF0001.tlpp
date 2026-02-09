@@ -163,6 +163,9 @@ Return
 /*/
 User Function LOSF001I(cRecno, cStatus)
 
+    default cRecno := "0"
+    default cStatus := "A"
+
     PREPARE ENVIRONMENT EMPRESA "01" FILIAL "01010001"
 
         u_losf001d(cRecno, cStatus)
@@ -321,7 +324,7 @@ Static Function ProcesNFse(nRecno_, cTipo_)
             ZZ2->ZZ2_status := "E"
             ZZ2->ZZ2_dtpros := dDataBase
             ZZ2->ZZ2_hrpros := time()
-            ZZ2->ZZ2_log    := "Está ação não está configurada para NFS"
+            ZZ2->ZZ2_log    := fwnoaccent("Está ação não está configurada para NFS")
         ZZ2->( msUnLock() )
     endif
 
@@ -388,9 +391,7 @@ Static Function ProcessaCTE( cTipo )
             CancelaCTE()
             
             if !empty(cMensagem)
-                varError:genCode := 001
-                varError:description := cMensagem
-                throw varError
+                gerError(cMensagem)
             endif
 
             return cMensagem
@@ -1018,7 +1019,7 @@ Static Function ProcessaCTE( cTipo )
         Case cTomador $ "2,3"
             cTpFrete := "F"
         Case cTomador $ "4"
-            cTpFrete := "D"
+            cTpFrete := "T"
         Otherwise
             oError := ErrorClass():new()
             oError:genCode := 001
@@ -1039,24 +1040,31 @@ Static Function ProcessaCTE( cTipo )
 
             validSerie(cYNumSer)
 
-            cMensagem := ProcCte(aVends)
+            if ZZ1->ZZ1_STATUS != "P"
+                cMensagem := ProcCte(aVends)
 
-            //Caso seja concluído com sucesso o retorno será vazio
-            if empty(cMensagem)
-                ZZ2->( dbSetOrder(1) )
-                recLock("ZZ2", .T.)
-                    ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
-                    ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
-                    ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
-                    ZZ2->ZZ2_status := "P"
-                    ZZ2->ZZ2_dtpros := Date()
-                    ZZ2->ZZ2_hrpros := time()
-                    ZZ2->ZZ2_log    := "Integração processada com sucesso"
-                ZZ2->( msUnLock() )
-            else
-                varError:genCode := 001
-                varError:description := cMensagem
-                throw varError
+                //Caso seja concluído com sucesso o retorno será vazio
+                if empty(cMensagem)
+
+                    recLock( "ZZ1", .F. )
+                        ZZ1->ZZ1_STATUS := "P"
+                        ZZ1->ZZ1_STAFIS := "P"
+                    ZZ1->( msUnlock() )
+
+                    ZZ2->( dbSetOrder(1) )
+                    recLock("ZZ2", .T.)
+                        ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+                        ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+                        ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+                        ZZ2->ZZ2_status := "P"
+                        ZZ2->ZZ2_dtpros := Date()
+                        ZZ2->ZZ2_hrpros := time()
+                        ZZ2->ZZ2_log    := fwnoaccent("Integração processada com sucesso")
+                    ZZ2->( msUnLock() )
+                else
+                    gerError(cMensagem)
+                    return cMensagem
+                endif
             endif
         //ElseIf cTipo == 'P' .AND. Alltrim(ZZ1->ZZ1_ACAO) == 'E' // Cancela nota
         //  CancelaCTE()
@@ -1098,7 +1106,7 @@ Static Function ProcessaCTE( cTipo )
             ZZ2->ZZ2_status := "E"
             ZZ2->ZZ2_dtpros := Date()
             ZZ2->ZZ2_hrpros := time()
-            ZZ2->ZZ2_log    := iif(valtype(oError:description) == "U" ,"Erro desconhecido", oError:description)
+            ZZ2->ZZ2_log    := iif(valtype(oError:description) == "U" ,"Erro desconhecido", fwnoaccent(oError:description))
         ZZ2->( msUnLock() )
 
     ENDTRY
@@ -1385,7 +1393,7 @@ Static Function ProcCte(aVends)
 
     //Peso/carga
 	oCrud:Set('C5_PBRUTO'	, nPesoBruto      ) 	
-	oCrud:Set('C5_VOLUME1'	, nVolume1      ) 	
+	oCrud:Set('C5_VOLUME1'	, round(nVolume1,0)      ) 	
 
     For i := 1 to Len(aVends)
         if aVends[i][4] != nil
@@ -1414,7 +1422,10 @@ Static Function ProcCte(aVends)
         if SF2->( dbSeek( xFilial("SF2") + cChvOld ) )
             oCrud:set('C6_NFORI'	, SF2->F2_DOC)
             oCrud:set('C6_SERIORI'	, SF2->F2_SERIE)
-            oCrud:set('C6_ITEMORI'	, "01")
+            SD2->(dbSetOrder(3))
+            if SD2->( dbSeek( cSeekSd2_ := SF2->F2_FILIAL + SF2->F2_DOC + SF2->F2_SERIE + SF2->F2_CLIENTE + SF2->F2_LOJA ) )
+                oCrud:set('C6_ITEMORI'	, SD2->D2_ITEM)
+            endif
         else 
             return "Não foi possível localizar a NF Original do complemento. CHAVE ORIGEM: " + cChvOld
         endif
@@ -1423,7 +1434,7 @@ Static Function ProcCte(aVends)
         oCrud:set('C6_QTDLIB'	, 1)
         oCrud:set('C6_NFORI'	, "")
         oCrud:set('C6_SERIORI'	, "")
-        oCrud:set('C6_ITEMORI'	, "01")
+        oCrud:set('C6_ITEMORI'	, "")
     endif
     oCrud:set('C6_PRCVEN'	, nVlrFrete)
     oCrud:set('C6_PRUNIT'	, nVlrFrete)
@@ -1445,8 +1456,8 @@ Static Function ProcCte(aVends)
     EndIf
     
     If ! oPedido:INCLUIRNF()
-        MostraErro(GetSrvProfString("Startpath","") , cArqErro )
-        cMensagem := Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
+        //MostraErro(GetSrvProfString("Startpath","") , cArqErro )
+        cMensagem := oPedido:retorno//Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
     Else    
 
         If Type('oProcess') != 'U'        	
@@ -1583,6 +1594,24 @@ Static Function deleteSe1()
         else 
             return "Nao foi possível localizar o contas a pagar referente ao CTE original"
         endif
+
+
+        SD2->(dbSetOrder(3))
+        if SD2->( dbSeek( cSeekSd2_ := SF2->F2_FILIAL + SF2->F2_DOC + SF2->F2_SERIE + SF2->F2_CLIENTE + SF2->F2_LOJA ) )
+            while SD2->( !EOF() ) .and. SD2->( D2_FILIAL + D2_DOC + D2_SERIE + D2_CLIENTE + D2_LOJA ) == cSeekSd2_
+
+                recLock("SD2", .F.)
+                    SD2->(dbDelete())
+                SD2->( msUnLock() )
+
+                SD2->( dbSkip() )
+            endDo
+        endif
+
+        recLock("SF2", .F.)
+            SF2->(dbDelete())
+        SF2->( msUnLock() )
+        
     else 
         return "Nao foi possível localizar o CTE original"
     endif
@@ -2010,8 +2039,8 @@ Static Function CancelaCTE()
     lRetorno := VldExist()
     BEGIN TRANSACTION
     If lRetorno
-        cQryExl := " SELECT R_E_C_N_O_ AS RECNO FROM "  + RetSqlName('SF2') + " SF2"
-        cQryExl += " WHERE SF2.D_E_L_E_T_ <> '*' AND F2_CHVNFE = '"+ZZ1->ZZ1_CHAVE+"' "
+        cQryExl := " SELECT R_E_C_N_O_ AS RECNO, D_E_L_E_T_ AS DELREG FROM "  + RetSqlName('SF2') + " SF2"
+        cQryExl += " WHERE F2_CHVNFE = '"+ZZ1->ZZ1_CHAVE+"' "
         
         If Select('QRYEXL') > 0
             QRYEXL->(dbclosearea())
@@ -2020,6 +2049,14 @@ Static Function CancelaCTE()
         TcQuery cQryExl New Alias 'QRYEXL'
         
         If QRYEXL->(!Eof())
+
+            if !empty(QRYEXL->DELREG)
+                cMensagem := "CTE ja foi excluido anteriormente na SF2 com chave "+ZZ1->ZZ1_CHAVE
+                DisarmTransaction()
+                QRYEXL->( dbCloseArea() )
+                return cMensagem
+            endif
+
             nRecnoAux := QRYEXL->RECNO
             dDatabase := dDtEvent
             SF2->(DbGoTo(QRYEXL->RECNO))
@@ -2030,8 +2067,9 @@ Static Function CancelaCTE()
                 oPedido:TIPONF      := SF2->F2_TIPO
                 oPedido:lCRIASB2      := .F.
                 If ! oPedido:EXCLUIRNF()
-                    MostraErro(GetSrvProfString("Startpath","") , cArqErro )
-                    cMensagem := Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
+                    cMensagem := oPedido:retorno
+                    //MostraErro(GetSrvProfString("Startpath","") , cArqErro )
+                    //cMensagem := Alltrim(MemoRead( GetSrvProfString("Startpath","") + '\' + cArqErro ))
                     dDataBase := dBkpDtBase
                 Else
                     oCTE := xmlParser(ZZ1->ZZ1_XML, "_", @cErro, @cAviso)    
@@ -2046,10 +2084,14 @@ Static Function CancelaCTE()
 
                     dDataBase := dBkpDtBase
                 EndIf
+        else 
+            cMensagem := "Erro ao localizar CTE para exclusao na SF2 com chave "+ZZ1->ZZ1_CHAVE
         EndIF
+        QRYEXL->( dbCloseArea() )
     Else
-        cMensagem := "Nota nao foi incluada no Protheus, portanto nao pode ser cancelada. Nao foi encontrado registro (ZZ1) de inclusao para esta nota."
+        cMensagem := "Nota nao foi incluida no Protheus, portanto nao pode ser cancelada. Nao foi encontrado registro (ZZ1) de inclusao para esta nota."
     EndIf
+    
     END TRANSACTION
 
 Return cMensagem
@@ -2063,7 +2105,7 @@ Static Function VldExist()
     
     cQryZZ1u := " SELECT * FROM "  + RetSqlName('ZZ1') + " ZZ1"
     cQryZZ1u += " WHERE ZZ1.D_E_L_E_T_ <> '*' AND ZZ1_CHAVE = '"+ZZ1->ZZ1_CHAVE+"' "
-    cQryZZ1u += " AND ZZ1_ACAO = 'I' AND ZZ1_STATUS = 'P' "
+    cQryZZ1u += " AND ZZ1_ACAO in ('I', 'C') AND ZZ1_STATUS = 'P' "
     
     If Select('QRYZZ1U') > 0
         QRYZZ1U->(dbclosearea())
@@ -2671,7 +2713,7 @@ Static Function gerError(cMensagem)
         ZZ2->ZZ2_status := "E"
         ZZ2->ZZ2_dtpros := Date()
         ZZ2->ZZ2_hrpros := time()
-        ZZ2->ZZ2_log    := cMensagem
+        ZZ2->ZZ2_log    := fwnoaccent(cMensagem)
     ZZ2->( msUnLock() )
 Return 
 
@@ -2696,16 +2738,35 @@ Static Function getCliente(cCNPJ, cIE, cUF)
     default cIE   := ""
     default cUF   := ""
 
-    cIE := formatAlfa( cIE )
+    cIE := u_formAlfa( cIE )
 
     if Empty(cIE)
         cIE := "ISENTO"
-    elseIf alltrim( CUF ) == "PE"
-        cIE := strzero( val( cIE ), 9 )
+    elseIf alltrim( CUF ) $ "PE,ES,BA,CE,MA,PB,PI,AL,SE,PA,RN"
+        if len( alltrim( cIE ) ) > 9
+            cIE := RIGHT( alltrim(cIE), 9 )
+        else
+            cIE := strzero( val( cIE ), 9 )
+        endif
     Elseif alltrim( CUF ) $ "MG,DF"
-        cIE := strzero( val( cIE ), 13 )
-    Elseif alltrim( CUF ) == "RS"
-        cIE := strzero( val( cIE ), 10 )
+        if len( alltrim( cIE ) ) > 13
+            cIE := RIGHT( alltrim(cIE), 13 )
+        else
+            cIE := strzero( val( cIE ), 13 )
+        endif
+    Elseif alltrim( CUF ) $ "RO"
+        if len( alltrim( cIE ) ) > 14
+            cIE := RIGHT( alltrim(cIE), 14 )
+        else
+            cIE := strzero( val( cIE ), 14 )
+        endif
+    Elseif alltrim( CUF ) $ "RS"
+        if len( alltrim( cIE ) ) > 10
+            cIE := RIGHT( alltrim(cIE), 10 )
+        else
+            cIE := strzero( val( cIE ), 10 )
+        endif
+
     EndIf
 
     cWhere := "% AND A1_INSCR = '" + alltrim(cIE) + "' %"
@@ -2733,7 +2794,7 @@ Static Function getCliente(cCNPJ, cIE, cUF)
     
 Return aReturn
 
-Static function formatAlfa( cText )
+user function formAlfa( cText )
 	Local cRemove := '1234567890'
 	Local cString := cText
 	Local i
