@@ -15,12 +15,14 @@
 Class IntegraNF
   
   public data cDocumentoNfe    as character
+  public data cNumNfse    as character
   public data cSerieNfe    as character
   public data aPvlNfs   as object
   public data aBloqueio as object
 
   public method new()
   public method integrar()
+  public method cancelar()
 
   private Method findOrCreateClient()
   private Method findOrCreateOrder()
@@ -47,6 +49,264 @@ Method new() class IntegraNF
   
 Return 
 
+/*/{Protheus.doc} cancelar
+  (long_description)
+  @author user
+  @since 16/01/2026
+  @version version
+  @param param_name, param_type, param_descr
+  @return return_var, return_type, return_description
+  /*/
+Method cancelar(oPedido, nRecno_) class IntegraNF
+  Local dBkpDtBase := ddatabase
+  Local aCpoSf2 := {}
+  Local aSd2Aux := {}
+  Local aCpoSd2 := {}
+  local i := 0
+
+  varError := ErrorClass():New()
+  self:cNumNfse := ""
+  
+  Default oPedido := JsonObject():new()
+
+  aRecnoSD2 := {}
+
+  TRY
+
+    if !oPedido:hasProperty("prestador")
+      gerError("Tag 'prestador' não localizado no json!")
+      return "Tag 'prestador' não localizado no json!"
+    endif
+
+    if !oPedido["prestador"]:hasProperty("cgc")
+      gerError("Tag 'cgc' não localizado no json!")
+      return "Tag 'cgc' não localizado no json!"
+    endif
+
+    if empty(oPedido["prestador"]["cgc"])
+      gerError("CNPJ da empresa não pode ser vazio!")
+      return "CNPJ da empresa não pode ser vazio!"
+    endif
+
+    if !::setEmpresa(oPedido["prestador"]["cgc"])
+      gerError("Não foi possível setar a empresa para o CNPJ: " + alltrim(oPedido["prestador"]["cgc"]) + "!")
+      return "Não foi possível setar a empresa para o CNPJ: " + alltrim(oPedido["prestador"]["cgc"]) + "!"
+    endif
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_FILCTE := cFilAnt
+    ZZ1->( msUnlock() )
+
+    //Caso for numeroNfse de um RPS já existe realiza o passo abaixo e retorna
+    if oPedido:hasProperty("numeroNfse")
+      self:cNumNfse := oPedido["numeroNfse"]
+    endif
+
+    if !oPedido:hasProperty("serieDocumento")
+      gerError("Tag 'serieDocumento' não localizado no json!")
+      return "Tag 'serieDocumento' não localizado no json!"
+    endif 
+
+    if !oPedido:hasProperty("numeroRps")
+      gerError("Tag 'numeroRps' não localizado no json!")
+      return "Tag 'numeroRps' não localizado no json!"
+    endif
+
+    self:cSerieNfe := oPedido["serieDocumento"]
+    cYNumNF := oPedido["numeroRps"]
+
+    if empty(cYNumNF)
+      cYNumNF := oPedido["numeroNfse"]
+    endif
+
+    if len(alltrim(cYNumNF)) > 9 
+      gerError("Tag 'numeroRps' com tamanho superior a 9!")
+      return "Tag 'numeroRps' com tamanho superior a 9!"
+    endif
+
+    self:validSerie()
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_NUMCTE := cYNumNf
+      ZZ1->ZZ1_SERCTE := padr( self:cSerieNfe , TAMSX3("F2_SERIE")[1], " " )
+    ZZ1->( msUnlock() )
+
+    aCliente := self:findOrCreateClient(oObjeto := oPedido)
+
+    if !aCliente[1]
+      gerError(aCliente[2])
+      return aCliente[2]
+    endif
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_CLIENT := aCliente[2]
+      ZZ1->ZZ1_LOJA := aCliente[3]
+    ZZ1->( msUnlock() )
+
+    cSeek_ := cFilAnt + padr(cYNumNf, TAMSX3("F2_DOC")[1], " " ) + padr( self:cSerieNfe , TAMSX3("F2_SERIE")[1], " " ) + padr( aCliente[2] , TAMSX3("F2_CLIENTE")[1], " " ) + padr( aCliente[3] , TAMSX3("F2_LOJA")[1], " " )
+    SF2->( dbSetOrder( 1 ) )
+    if !SF2->( dbSeek( cSeek_ ) )
+      gerError("NFSe não localizada no Protheus! Chave: " + cSeek_ )
+      return "NFSe não localizada no Protheus! Chave: " + cSeek_
+    endif
+
+    if oPedido:hasProperty("emissao")
+      if !empty(oPedido["emissao"])
+        aData := strtokarr(oPedido["emissao"], "/")
+        dDataBase := sToD( aData[3] + aData[2] + aData[1] )
+      endif
+    endif
+
+    //Cabecalho documento de entrada
+    aadd(aCpoSf2, {"F2_FILIAL"	, SF2->F2_FILIAL 	, nil})
+    aadd(aCpoSf2, {"F2_TIPO" 	  , SF2->F2_TIPO 		, nil})
+    aadd(aCpoSf2, {"F2_DOC" 	  , SF2->F2_DOC 		, nil})
+    aadd(aCpoSf2, {"F2_SERIE" 	, SF2->F2_SERIE 	, nil})
+    aadd(aCpoSf2, {"F2_EMISSAO"	, SF2->F2_EMISSAO 	, nil})
+    aadd(aCpoSf2, {"F2_CLIENTE"	, SF2->F2_CLIENTE 	, nil})
+    aadd(aCpoSf2, {"F2_LOJA" 	  , SF2->F2_LOJA 	, nil})
+    aadd(aCpoSf2, {"F2_COND" 	  , SF2->F2_COND 	, nil})
+    aadd(aCpoSf2, {"F2_DTDIGIT"	, SF2->F2_DTDIGIT 	, nil})
+    aadd(aCpoSf2, {"F2_ESPECIE"	, SF2->F2_ESPECIE 	, nil})
+//    aadd(aCpoSf2, {"F2_DT_UPD" 	, SF2->F2_DT_UPD 	, nil})
+    // aadd(aCpoSf2, {"F2_CODZZA" 	, cCod_ZZA 	, nil}) // coloca o ID? #todo
+//    aadd(aCpoSf2, {"F2_ORIGEM" 	, SF2->F2_DT_UPD 		, nil})
+    aadd(aCpoSf2, {"F2_DESCONT"	, SF2->F2_DESCONT 		, nil})
+    aadd(aCpoSf2, {"F2_FRETE" 	, SF2->F2_FRETE 		, nil})
+    aadd(aCpoSf2, {"F2_SEGURO" 	, SF2->F2_SEGURO 		, nil})
+    aadd(aCpoSf2, {"F2_DESPESA"	, SF2->F2_DESPESA 		, nil})
+    aadd(aCpoSf2, {"F2_EMINFE" 	, SF2->F2_EMINFE	, nil})
+    aadd(aCpoSf2, {"F2_HORNFE" 	, SF2->F2_HORNFE , nil})
+    aadd(aCpoSf2, {"F2_CODNFE" 	, SF2->F2_CODNFE	, nil})
+    aadd(aCpoSf2, {"F2_NFELETR" , SF2->F2_NFELETR		, nil})
+    
+    
+    
+    SD2->( DBSetOrder(3) )
+    if !SD2->( dbSeek( cSeekSd2_ := cFilAnt + padr(cYNumNf, TAMSX3("F2_DOC")[1], " " ) + padr( self:cSerieNfe , TAMSX3("D2_SERIE")[1], " " ) + padr(aCliente[2], TAMSX3("D2_CLIENTE")[1], " " ) + padr( aCliente[3] , TAMSX3("D2_LOJA")[1], " " ) ) )
+      gerError("Não foi possível localizar os itens da NFSe! chave: " + cSeekSd2_ )
+      return "Não foi possível localizar os itens da NFSe! chave: " + cSeekSd2_
+    else 
+      
+      while SD2->( !EOF() ) .and. SD2->( D2_FILIAL + D2_DOC + D2_SERIE + D2_CLIENTE + D2_LOJA ) == cSeekSd2_
+        
+        //Guarda os recno para poder limpar o campo D2_ORIGLAN no final do processo
+        aadd(aRecnoSD2, SD2->( recno() ))
+
+        //Flega o campo D2_ORIGLAN como LF para poder cancelar a NFS
+        recLock("SD2", .F.)
+          SD2->D2_ORIGLAN := "LF"
+        SD2->( msUnLock() )
+        
+        aSd2Aux := {}
+        aadd(aSd2Aux, {"D2_ITEM" 	, SD2->D2_ITEM 	, nil})
+        aadd(aSd2Aux, {"D2_COD" 	, SD2->D2_COD 	, nil})
+        aadd(aSd2Aux, {"D2_QUANT" 	, SD2->D2_QUANT	, nil})
+        aadd(aSd2Aux, {"D2_PRCVEN" 	, SD2->D2_PRCVEN 	, nil})
+        aadd(aSd2Aux, {"D2_TOTAL" 	, SD2->D2_TOTAL 	, nil})
+        aadd(aSd2Aux, {"D2_TES" 	, SD2->D2_TES 		, nil})
+
+        ///ISS
+        aadd(aSd2Aux, {"D2_ALIQISS", SD2->D2_ALIQISS	, nil})
+        aadd(aSd2Aux, {"D2_BASEISS", SD2->D2_BASEISS	, nil})
+        aadd(aSd2Aux, {"D2_VALISS" , SD2->D2_VALISS 	, nil})
+
+        aadd(aSd2Aux, {"D2_CONTA" , SD2->D2_CONTA , nil})
+
+        aadd(aCpoSd2, aSd2Aux)
+
+
+        SD2->( dbSkip() )
+      endDo
+    endif
+
+    lMsErroAuto := .F.
+
+    msExecAuto({|x , y , z| MATA920(x,y,z)}, aCpoSf2, aCpoSd2, 5)
+    //MSExecAuto({|x| MATA520(x)},aCpoSf2)
+
+    if lMsErroAuto
+      cArquivo := FwTimeStamp() + "_cancelamento_nfs.txt"
+      MostraErro( GetSrvProfString("Startpath","") , cArquivo )
+      cMsg := MemoRead(  GetSrvProfString("Startpath","") + '\' + cArquivo )
+
+      gerError(cMsg )
+      return cMsg
+    endif
+
+    
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_STATUS := "P"
+    ZZ1->( msUnlock() )
+
+    CHKFILE("ZZ2")
+
+    DBSelectArea( "ZZ2" )
+    recLock("ZZ2", .T.)
+      ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+      ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+      ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+      ZZ2->ZZ2_status := "E"
+      ZZ2->ZZ2_dtpros := dDataBase
+      ZZ2->ZZ2_hrpros := time()
+      ZZ2->ZZ2_log    := fwnoaccent("Integração processada com sucesso")
+    ZZ2->( msUnLock() )
+
+  CATCH oError
+
+    SD2->( dbSetOrder( 1 ) )      
+    for i := 1 to len(aRecnoSD2)
+      
+      SD2->( dbGoTo(aRecnoSD2[i]) )
+
+      recLock("SD2", .F.)
+        SD2->D2_ORIGLAN := ""
+      SD2->( msUnLock() )
+
+    next i
+
+
+    recLock( "ZZ1", .F. )
+      ZZ1->ZZ1_STATUS := "E"
+    ZZ1->( msUnlock() )
+
+    CHKFILE("ZZ2")
+
+    DBSelectArea( "ZZ2" )
+    recLock("ZZ2", .T.)
+      ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+      ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+      ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+      ZZ2->ZZ2_status := "E"
+      ZZ2->ZZ2_dtpros := dDataBase
+      ZZ2->ZZ2_hrpros := time()
+      ZZ2->ZZ2_log    := fwnoaccent(oError:description)
+    ZZ2->( msUnLock() )
+
+  FINALLY
+
+    SET DELETED OFF
+
+    SD2->( dbSetOrder( 1 ) )      
+    for i := 1 to len(aRecnoSD2)
+      
+      SD2->( dbGoTo(aRecnoSD2[i]) )
+
+      recLock("SD2", .F.)
+        SD2->D2_ORIGLAN := ""
+      SD2->( msUnLock() )
+
+    next i
+
+    SET DELETED ON
+
+    dDataBase := dBkpDtBase
+
+  EndTry
+
+Return 
+
 /*/{Protheus.doc} integrar
   (long_description)
   @author Leonardo Freitas
@@ -58,18 +318,13 @@ Return
 Method integrar(oPedido, nRecno_) class IntegraNF
 
   Local dBkpDtBase := ddatabase
+  
   varError := ErrorClass():New()
+  self:cNumNfse := ""
   
   Default oPedido := JsonObject():new()
 
   TRY
-
-    if oPedido:hasProperty("emissao")
-      if !empty(oPedido["emissao"])
-        aData := strtokarr(oPedido["emissao"], "/")
-        dDataBase := sToD( aData[3] + aData[2] + aData[1] )
-      endif
-    endif
 
     if !oPedido:hasProperty("prestador")
       varError:genCode := 001
@@ -95,29 +350,91 @@ Method integrar(oPedido, nRecno_) class IntegraNF
       throw varError
     endif
 
+    //Caso for numeroNfse de um RPS já existe realiza o passo abaixo e retorna
+    if oPedido:hasProperty("numeroNfse")
+      self:cNumNfse := oPedido["numeroNfse"]
+    endif
+
     if !oPedido:hasProperty("serieDocumento")
       varError:genCode := 001
       varError:description := "Tag 'serieDocumento' não localizado no json!"
       throw varError
     endif 
 
-    self:cSerieNfe := oPedido["serieDocumento"]
-    cYNumNF := oPedido["numeroDocumento"]
+    if !oPedido:hasProperty("numeroRps")
+      varError:genCode := 001
+      varError:description := "Tag 'numeroRps' não localizado no json!"
+      throw varError
+    endif
 
-    self:validSerie()
+    self:cSerieNfe := oPedido["serieDocumento"]
+    cYNumNF := oPedido["numeroRps"]
+
+    if empty(cYNumNF)
+      cYNumNF := oPedido["numeroNfse"]
+    endif
+
+    if len(alltrim(cYNumNF)) > 9 
+      gerError("Tag 'numeroRps' com tamanho superior a 9!")
+      return "Tag 'numeroRps' com tamanho superior a 9!"
+    endif
 
     aCliente := self:findOrCreateClient(oObjeto := oPedido)
 
     if !aCliente[1]
-      varError:genCode := 001
-      varError:description := aCliente[2]
-      throw varError
+      gerError(aCliente[2])
+      return aCliente[2]
     endif
 
     recLock( "ZZ1", .F. )
       ZZ1->ZZ1_CLIENT := aCliente[2]
       ZZ1->ZZ1_LOJA := aCliente[3]
     ZZ1->( msUnlock() )
+
+    SF2->( dbSetOrder( 1 ) )
+    //if SF2->( dbSeek( cFilAnt + substr( cYNumNf, 1, TAMSX3("F2_DOC")[1] ) + substr( self:cSerieNfe , 1, TAMSX3("F2_SERIE")[1] ) ) )
+    if SF2->(DbSeek(xFilial('SF2') + Padr(cYNumNf, TAMSX3("F2_DOC")[1], " " ) + Padr(self:cSerieNfe, TAMSX3("F2_SERIE")[1], " ") + aCliente[2] + aCliente[3] ))
+
+      if !empty(SF2->F2_NFELETR)
+        varError:genCode := 001
+        varError:description := "NFS já cadastrada no sistema!"
+        throw varError
+      endif
+
+      recLock("SF2", .F.)
+        SF2->F2_NFELETR := self:cNumNfse
+      SF2->( msUnLock() )
+
+      recLock( "ZZ1", .F. )
+        ZZ1->ZZ1_STATUS := "P"
+        ZZ1->ZZ1_FILCTE := SF2->F2_FILIAL
+        ZZ1->ZZ1_NUMCTE := SF2->F2_DOC
+        ZZ1->ZZ1_SERCTE := SF2->F2_SERIE
+        ZZ1->ZZ1_CLIENT := SF2->F2_CLIENTE
+        ZZ1->ZZ1_LOJA   := SF2->F2_LOJA
+      ZZ1->( msUnlock() )
+
+      ZZ2->( dbSetOrder(1) )
+      recLock("ZZ2", .T.)
+          ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+          ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+          ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+          ZZ2->ZZ2_status := "P"
+          ZZ2->ZZ2_dtpros := dDataBase
+          ZZ2->ZZ2_hrpros := time()
+          ZZ2->ZZ2_log    := fwnoaccent("Integração processada com sucesso")
+      ZZ2->( msUnLock() )
+      return .T.
+    endif
+
+    if oPedido:hasProperty("emissao")
+      if !empty(oPedido["emissao"])
+        aData := strtokarr(oPedido["emissao"], "/")
+        dDataBase := sToD( aData[3] + aData[2] + aData[1] )
+      endif
+    endif
+
+    self:validSerie()
 
     aPedido_ := self:findOrCreateOrder(oPedido := oPedido, aClient := aCliente)
 
@@ -159,7 +476,7 @@ Method integrar(oPedido, nRecno_) class IntegraNF
     recLock( "ZZ1", .F. )
       ZZ1->ZZ1_STATUS := "P"
       ZZ1->ZZ1_FILCTE := cFilAnt
-      ZZ1->ZZ1_NUMCTE := self:cDocumentoNfe
+      ZZ1->ZZ1_NUMCTE := cYNumNf
       ZZ1->ZZ1_SERCTE := self:cSerieNfe
     ZZ1->( msUnlock() )
 
@@ -171,7 +488,7 @@ Method integrar(oPedido, nRecno_) class IntegraNF
         ZZ2->ZZ2_status := "P"
         ZZ2->ZZ2_dtpros := dDataBase
         ZZ2->ZZ2_hrpros := time()
-        ZZ2->ZZ2_log    := "Integração processada com sucesso"
+        ZZ2->ZZ2_log    := fwnoaccent("Integração processada com sucesso")
     ZZ2->( msUnLock() )
 
     
@@ -192,7 +509,7 @@ Method integrar(oPedido, nRecno_) class IntegraNF
       ZZ2->ZZ2_status := "E"
       ZZ2->ZZ2_dtpros := dDataBase
       ZZ2->ZZ2_hrpros := time()
-      ZZ2->ZZ2_log    := oError:description
+      ZZ2->ZZ2_log    := fwnoaccent(oError:description)
     ZZ2->( msUnLock() )
 
   EndTry
@@ -242,10 +559,6 @@ Method findOrCreateClient(oObjeto) class IntegraNF
   else 
     return { .F., "É necessário enviar o cpf/cnpj do cliente!" }
   endif
-  
-  if oObjeto["cliente"]:hasProperty("ie")
-    cIE := oObjeto["cliente"]["ie"]
-  endif
 
   if oObjeto["cliente"]:hasProperty("nome")
     cNome := oObjeto["cliente"]["nome"]
@@ -254,7 +567,9 @@ Method findOrCreateClient(oObjeto) class IntegraNF
   endif
 
   if oObjeto["cliente"]:hasProperty("fantasia")
-    cFantasia := UPPER( substr( oObjeto["cliente"]["fantasia"] , 1, TAMSX3("A1_NREDUZ")[1] ) )
+    if valtype(oObjeto["cliente"]["fantasia"]) != "U"
+      cFantasia := UPPER( substr( oObjeto["cliente"]["fantasia"] , 1, TAMSX3("A1_NREDUZ")[1] ) )
+    endif
   endif
   
   if empty(cFantasia)
@@ -297,6 +612,10 @@ Method findOrCreateClient(oObjeto) class IntegraNF
       return { .F., "É necessário enviar o estado do endereço!" }
     endif
 
+    if oObjeto["cliente"]:hasProperty("ie")
+      cIE := u_getIECor(oObjeto["cliente"]["ie"], cEstado)
+    endif
+
     if oObjeto["cliente"]["endereco"]:hasProperty("numero")
       cNumero := oObjeto["cliente"]["endereco"]["numero"]
     else 
@@ -307,7 +626,7 @@ Method findOrCreateClient(oObjeto) class IntegraNF
 
     //Caso não localize o código do municipio irá retornar uma falha e não seguirá no processo
     if empty(cCodMun_)
-      return { .F.,  'Não foi localizado o código do municipio: ' + CRLF + "Municipio: " + alltrim(cMun) + CRLF + "Estado: " + cEst}
+      return { .F.,  'Não foi localizado o código do municipio: ' + CRLF + "Municipio: " + alltrim(cMunicipio) + CRLF + "Estado: " + cEstado}
     endif
   
   else 
@@ -394,6 +713,7 @@ Method findOrCreateClient(oObjeto) class IntegraNF
   oSA1Mod:setValue("A1_PESSOA",    IIF(LEN(cCGC) == 14, "J", "F")  ) // Tipo Pessoa
   oSA1Mod:setValue("A1_CODPAIS", "01058" )
   oSA1Mod:setValue("A1_CDRDES", cCodRegiao )
+  oSA1Mod:setValue("A1_CLIDIR", "N" )
 
   //oSA1Mod:setValue("A1_INCISS", "1" )
 
@@ -512,7 +832,7 @@ Return aRetorno_
 Method findOrCreateOrder(oPedido, aClient) class IntegraNF
   
   Local _cNatureza := Alltrim(SuperGetMv("MS_NATNFS",.F.,"010102"))
-  Local cTes := '512'
+  Local cTes := '553'
   local dEmissao := ddatabase
   local cUFDest_ := ""
   local cCodMunPrest := ""
@@ -524,6 +844,10 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
 
   if !empty(ZZ1->ZZ1_CODPED)
     return { .T., ZZ1->ZZ1_CODPED }
+  endif
+
+  if upper(alltrim(self:cSerieNfe)) == "ND"
+    cTes := '561'
   endif
 
   cDoc := GetSxeNum("SC5", "C5_NUM")
@@ -581,8 +905,13 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
 */
   _cNatureza := ::getNatureza(oPedido := oPedido)
 
+  cProd := alltrim( oPedido["servico"]["codigo"] )
+  if len(cProd) == 6
+    cProd := substr( cProd, 1, 2 ) + "." + substr( cProd, 3, 2 )
+  endif
+
   SB1->( dbSetOrder( 1 ) )
-  if SB1->( dbSeek( xFilial( "SB1" ) + alltrim( oPedido["servico"]["codigo"] ) ) )
+  if SB1->( dbSeek( xFilial( "SB1" ) + cProd ) )
     
     aadd(aLinha,{"C6_ITEM"   , StrZero(1,2), Nil})
     aadd(aLinha,{"C6_PRODUTO", SB1->B1_COD       , Nil})
@@ -596,6 +925,7 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
     aadd(aLinha,{"C6_PRUNIT" , oPedido["valorServico"]         , Nil})
 //    aadd(aLinha,{"C6_VALOR"  , oPedido["valorServico"]         , Nil})
     aadd(aLinha,{"C6_TES"    , cTes       , Nil})
+    aadd(aLinha, {"C6_CONTA", SB1->B1_CONTA, nil })
 
 //    aadd(aLinha,{"C6_CF" , cCFOP            , Nil})
 
@@ -605,7 +935,7 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
 
   else 
 
-    return { .F., "Nao foi possível localizar o produto no Protheus!" }
+    return { .F., "Nao foi possível localizar o produto do serviço código: " + alltrim(oPedido["servico"]["codigo"]) + " no Protheus!" }
 
   endif
 
@@ -887,6 +1217,12 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   local cClasProd := ""
   Local cAtivCPB   := SuperGetMv('MS_ATIVCPB',.F., '00000140')
   Local nAliqCPB := SuperGetMv('MS_ALIQCPB', .F., 1.5)
+  Local cYNumNFse := ""
+  local cCodPro := ""
+
+  if oObjeto:hasProperty("numeroNfse")
+    cYNumNFse := oObjeto["numeroNfse"]
+  endif
 
   if oObjeto:hasProperty("emissao")
     if !empty(oObjeto["emissao"])
@@ -899,10 +1235,49 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
     cClasProd := ::getClasPro(oObjeto["productId"])
   endif
 
+  SD2->( dbSetOrder( 3 ) )
+  if SD2->(dbSeek(xFilial("SD2") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("D2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("D2_SERIE")[1]," ") + PADR(alltrim(aCliente[2]),TAMSX3("A1_COD")[1]," ") + aCliente[3]))
+
+    cCodPro := SD2->D2_COD
+
+    recLock("SD2", .F.)
+
+      SD2->D2_CONTA := POSICIONE("SB1", 1, xFilial( "SB1" ) + cCodPro, "B1_CONTA")
+      SD2->D2_ORIGLAN := "LF"
+      SD2->D2_EMISSAO := dEmissao
+
+      SD2->D2_BASEISS := oObjeto["baseISS"]
+      SD2->D2_VALISS := oObjeto["valorISS"]
+      SD2->D2_ALIQISS := ( oObjeto["valorISS"] * 100 ) / oObjeto["baseISS"]
+      
+      SD2->D2_BASEINS := oObjeto["baseINSS"]
+      SD2->D2_VALINS := oObjeto["valorINSS"]
+      SD2->D2_ALIQINS := ( oObjeto["valorINSS"] * 100 ) / oObjeto["baseINSS"]
+
+      SD2->D2_BASECSL := oObjeto["baseCSLL"]
+      SD2->D2_ALQCSL := ( oObjeto["valorCSLL"] * 100 ) / oObjeto["baseCSLL"]
+      SD2->D2_VALCSL := oObjeto["valorCSLL"]
+
+      SD2->D2_BASECOF := oObjeto["baseCOFINS"]
+      SD2->D2_ALQCOF := ( oObjeto["valorCOFINS"] * 100 ) / oObjeto["baseCOFINS"]
+      SD2->D2_VALCOF := oObjeto["valorCOFINS"] 
+
+      SD2->D2_BASEPIS := oObjeto["basePIS"]
+      SD2->D2_ALQPIS := ( oObjeto["valorPIS"] * 100 ) / oObjeto["basePIS"]
+      SD2->D2_VALPIS := oObjeto["valorPIS"]
+
+      SD2->D2_BASEIRR := oObjeto["baseIRRF"]
+      SD2->D2_ALQIRRF := ( oObjeto["valorIRRF"] * 100 ) / oObjeto["baseIRRF"]
+      SD2->D2_VALIRRF := oObjeto["valorIRRF"]
+    SD2->( msUnlock() )
+  endif
+
   //Altera informações de impostos na SF2 
   SF2->( dbSetOrder( 1 ) )
   if SF2->(dbSeek(xFilial("SF2") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + PADR(alltrim(aCliente[2]),TAMSX3("A1_COD")[1]," ") + aCliente[3]))
     recLock("SF2", .F.)
+      //SF2->F2_CONTA := POSICIONE("SB1", 1, xFilial( "SB1" ) + cCodPro, "B1_CONTA")
+      SF2->F2_NFELETR  := cYNumNFse
       SF2->F2_ESPECIE := "NFS"
       SF2->F2_CLASPRO := cClasProd
 
@@ -938,37 +1313,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
     SF2->( msUnlock() )
   endif
 
-  SD2->( dbSetOrder( 3 ) )
-  if SD2->(dbSeek(xFilial("SD2") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("D2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("D2_SERIE")[1]," ") + PADR(alltrim(aCliente[2]),TAMSX3("A1_COD")[1]," ") + aCliente[3]))
-    recLock("SD2", .F.)
-
-      SD2->D2_EMISSAO := dEmissao
-
-      SD2->D2_BASEISS := oObjeto["baseISS"]
-      SD2->D2_VALISS := oObjeto["valorISS"]
-      SD2->D2_ALIQISS := ( oObjeto["valorISS"] * 100 ) / oObjeto["baseISS"]
-      
-      SD2->D2_BASEINS := oObjeto["baseINSS"]
-      SD2->D2_VALINS := oObjeto["valorINSS"]
-      SD2->D2_ALIQINS := ( oObjeto["valorINSS"] * 100 ) / oObjeto["baseINSS"]
-
-      SD2->D2_BASECSL := oObjeto["baseCSLL"]
-      SD2->D2_ALQCSL := ( oObjeto["valorCSLL"] * 100 ) / oObjeto["baseCSLL"]
-      SD2->D2_VALCSL := oObjeto["valorCSLL"]
-
-      SD2->D2_BASECOF := oObjeto["baseCOFINS"]
-      SD2->D2_ALQCOF := ( oObjeto["valorCOFINS"] * 100 ) / oObjeto["baseCOFINS"]
-      SD2->D2_VALCOF := oObjeto["valorCOFINS"] 
-
-      SD2->D2_BASEPIS := oObjeto["basePIS"]
-      SD2->D2_ALQPIS := ( oObjeto["valorPIS"] * 100 ) / oObjeto["basePIS"]
-      SD2->D2_VALPIS := oObjeto["valorPIS"]
-
-      SD2->D2_BASEIRR := oObjeto["baseIRRF"]
-      SD2->D2_ALQIRRF := ( oObjeto["valorIRRF"] * 100 ) / oObjeto["baseIRRF"]
-      SD2->D2_VALIRRF := oObjeto["valorIRRF"]
-    SD2->( msUnlock() )
-  endif
+  
 
   SE1->( dbSetOrder( 1 ) )
 
@@ -1002,6 +1347,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   if SF3->(dbSeek(cSeek_ := xFilial("SF3") + aCliente[2] + aCliente[3] + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") ))
     while SF3->(!EOF()) .and. SF3->F3_FILIAL + SF3->F3_CLIEFOR + SF3->F3_LOJA + SF3->F3_NFISCAL + SF3->F3_SERIE == cSeek_
       recLock("SF3", .F.)
+        SF3->F3_CONTA := POSICIONE("SB1", 1, xFilial( "SB1" ) + cCodPro, "B1_CONTA")
         SF3->F3_ATIVCPB := cAtivCPB
         SF3->F3_ALIQCPB := nAliqCPB
         SF3->F3_VALCPB := Round(SF2->F2_VALMERC * (nAliqCPB / 100),2)
@@ -1030,7 +1376,7 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
   if SFT->(dbSeek(xFilial("SFT") + PADR(alltrim(self:cDocumentoNfe),TAMSX3("F2_DOC")[1]," ") + PADR(alltrim(self:cSerieNfe),TAMSX3("F2_SERIE")[1]," ") + aCliente[2] + aCliente[3]))
     recLock("SFT", .F.)
       SFT->FT_ESPECIE := "NFS"
-
+      SFT->FT_CONTA := POSICIONE("SB1", 1, xFilial( "SB1" ) + cCodPro, "B1_CONTA")
       SFT->FT_ATIVCPB := cAtivCPB
       SFT->FT_ALIQCPB := nAliqCPB
       SFT->FT_VALCPB  := Round(SF2->F2_VALMERC * nAliqCPB / 100,2)
@@ -1060,23 +1406,26 @@ Method calcImposto(oObjeto, aCliente) class IntegraNF
       SFT->FT_BASEINS := oObjeto["baseINSS"]
       SFT->FT_VALINS  := oObjeto["valorINSS"]
 
-      SFT->FT_ALIQPIS := ( oObjeto["valorPIS"] * 100 ) / oObjeto["basePIS"]
-      SFT->FT_BASEPIS := oObjeto["basePIS"]
-      SFT->FT_VALPIS  := oObjeto["valorPIS"]
+      //SFT->FT_ALIQPIS := ( oObjeto["valorPIS"] * 100 ) / oObjeto["basePIS"]
+      //SFT->FT_BASEPIS := oObjeto["basePIS"]
+      //SFT->FT_VALPIS  := oObjeto["valorPIS"]
       SFT->FT_BRETPIS := oObjeto["basePIS"]
       SFT->FT_VRETPIS := oObjeto["valorPIS"]
+      SFT->FT_ARETPIS := ( oObjeto["valorPIS"] * 100 ) / oObjeto["basePIS"]
 
-      SFT->FT_ALIQCOF := ( oObjeto["valorCOFINS"] * 100 ) / oObjeto["baseCOFINS"]
-      SFT->FT_BASECOF := oObjeto["baseCOFINS"]
-      SFT->FT_VALCOF  := oObjeto["valorCOFINS"]
+      //SFT->FT_ALIQCOF := ( oObjeto["valorCOFINS"] * 100 ) / oObjeto["baseCOFINS"]
+      //SFT->FT_BASECOF := oObjeto["baseCOFINS"]
+      //SFT->FT_VALCOF  := oObjeto["valorCOFINS"]
       SFT->FT_BRETCOF := oObjeto["baseCOFINS"]
       SFT->FT_VRETCOF := oObjeto["valorCOFINS"]
+      SFT->FT_ARETCOF := ( oObjeto["valorCOFINS"] * 100 ) / oObjeto["baseCOFINS"]
 
-      SFT->FT_ALIQCSL := ( oObjeto["valorCSLL"] * 100 ) / oObjeto["baseCSLL"]
-      SFT->FT_BASECSL := oObjeto["baseCSLL"]
-      SFT->FT_VALCSL  := oObjeto["valorCSLL"]
+      //SFT->FT_ALIQCSL := ( oObjeto["valorCSLL"] * 100 ) / oObjeto["baseCSLL"]
+      //SFT->FT_BASECSL := oObjeto["baseCSLL"]
+      //SFT->FT_VALCSL  := oObjeto["valorCSLL"]
       SFT->FT_BRETCSL := oObjeto["baseCSLL"]
       SFT->FT_VRETCSL := oObjeto["valorCSLL"]
+      SFT->FT_ARETCSL := ( oObjeto["valorCSLL"] * 100 ) / oObjeto["baseCSLL"]
 
     SFT->( msUnlock() )
   endif
@@ -1181,7 +1530,7 @@ Method getNatureza(oPedido) class IntegraNF
       lPCC := .T.
     endif
   endif
-
+/*
   //Fiz os IF's dessa maneira apenas para facilitar a visualização das naturezas
   //Podia ter feito de uma maneira mais enxuta
   if lISS .and. lIRRF .and. lPCC .and. lINSS
@@ -1211,9 +1560,23 @@ Method getNatureza(oPedido) class IntegraNF
   if lISS .and. empty(_cNatureza)
     _cNatureza := '010104' // Serviços com retenção de ISS
   endif
+*/
+
+  if lISS .and. lIRRF .and. lPCC .and. lINSS
+    _cNatureza := '1010111' // Serviços sem retenção
+  endif
+
+  if lISS .and. empty(_cNatureza)
+    _cNatureza := '1010102' // Serviços sem retenção
+  endif
+
+  //0101113 - IR / INSS / PCC
+  if !lISS .and. lIRRF .and. lINSS .AND. lPCC .and. empty(_cNatureza)
+    _cNatureza := '0101113' // Serviços sem retenção
+  endif
 
   if empty(_cNatureza)
-    _cNatureza := '010109' // Serviços sem retenção
+    _cNatureza := '1010112' // Serviços sem retenção
   endif
   
 Return _cNatureza
@@ -1272,19 +1635,109 @@ Method getClasPro(cCodProd) class IntegraNF
 
     if QRYSX5->quantidade > 0
 
-        cCodigo := getSx8Num("SX5", "X5_CHAVE")
+      cCodigo := ""
 
-        recLock('SX5', .T.)
-            SX5->X5_FILIAL := xFilial("SX5")
-            SX5->X5_TABELA := 'CP'
-            SX5->X5_CHAVE := cCodigo
-            SX5->X5_DESCRI := cCodProd
-            SX5->X5_DESCSPA := cCodProd
-            SX5->X5_DESCENG := cCodProd
-        SX5->(msUnlock())
-        ConfirmSx8()
+      if select('SX5MAX') > 0
+          SX5MAX->(dbclosearea())
+      endif
+
+      BeginSql alias 'SX5MAX'
+          SELECT max(x5_chave) chave
+              FROM %table:SX5% SX5
+              WHERE SX5.X5_FILIAL = %xFilial:SX5% AND
+                  x5_tabela = 'CP' AND
+              LENGTH(trim(x5_chave))  = 3 AND
+              SX5.D_E_L_E_T_ <> '*'
+      EndSql
+
+      if SX5MAX->( !Eof() )
+          cCodigo := soma1( alltrim(SX5MAX->chave ) )
+      endif
+
+      if empty( cCodigo )
+          return ""
+      endif
+      SX5MAX->( dbclosearea() )
+
+      recLock('SX5', .T.)
+          SX5->X5_FILIAL := xFilial("SX5")
+          SX5->X5_TABELA := 'CP'
+          SX5->X5_CHAVE := cCodigo
+          SX5->X5_DESCRI := cCodProd
+          SX5->X5_DESCSPA := cCodProd
+          SX5->X5_DESCENG := cCodProd
+      SX5->(msUnlock())
+      ConfirmSx8()
     endif 
 
     QRYSX5->(dbclosearea())
     
 Return cCodProd
+
+Static Function gerError(cMensagem)
+    recLock( "ZZ1", .F. )
+        ZZ1->ZZ1_STATUS := "E"
+    ZZ1->( msUnlock() )
+
+    CHKFILE("ZZ2")
+
+    DBSelectArea( "ZZ2" )
+    recLock("ZZ2", .T.)
+        ZZ2->ZZ2_FILIAL := ZZ1->ZZ1_FILIAL 
+        ZZ2->ZZ2_codigo := getSx8Num("ZZ2", "ZZ2_CODIGO")
+        ZZ2->ZZ2_codzz1 := ZZ1->ZZ1_CODIGO
+        ZZ2->ZZ2_status := "E"
+        ZZ2->ZZ2_dtpros := Date()
+        ZZ2->ZZ2_hrpros := time()
+        ZZ2->ZZ2_log    := fwnoaccent(cMensagem)
+    ZZ2->( msUnLock() )
+Return 
+
+/*/{Protheus.doc} getIECor
+(long_description)
+@type user function
+@author user
+@since 06/02/2026
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function getIECor(cIE, CUF)
+
+  default cIE := ""
+
+  cIE := u_formAlfa( cIE )
+
+  if Empty(cIE)
+      cIE := "ISENTO"
+  elseIf alltrim( CUF ) $ "PE,ES,BA,CE,MA,PB,PI,AL,SE,PA,RN"
+      if len( alltrim( cIE ) ) > 9
+          cIE := RIGHT( alltrim(cIE), 9 )
+      else
+          cIE := strzero( val( cIE ), 9 )
+      endif
+  Elseif alltrim( CUF ) $ "MG,DF"
+      if len( alltrim( cIE ) ) > 13
+          cIE := RIGHT( alltrim(cIE), 13 )
+      else
+          cIE := strzero( val( cIE ), 13 )
+      endif
+  Elseif alltrim( CUF ) $ "RO"
+      if len( alltrim( cIE ) ) > 14
+          cIE := RIGHT( alltrim(cIE), 14 )
+      else
+          cIE := strzero( val( cIE ), 14 )
+      endif
+  Elseif alltrim( CUF ) $ "RS"
+      if len( alltrim( cIE ) ) > 10
+          cIE := RIGHT( alltrim(cIE), 10 )
+      else
+          cIE := strzero( val( cIE ), 10 )
+      endif
+
+  EndIf
+
+Return cIE

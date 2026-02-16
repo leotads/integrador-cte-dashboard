@@ -35,14 +35,14 @@ User Function alCliLoj(cCgc, cIE)
       SELECT max(a1_loja) maxloja
         FROM %table:SA1% a1
        WHERE a1_filial = %xFilial:SA1% AND
-             a1_cgc = %exp:cCgc% AND
+             a1_cod = %exp:left(cCgc,8)% AND
              a1_loja like 'IE%' AND 
              D_E_L_E_T_ = ' '
     endSql
 
     if QRYSA1->(!EOF())
       if !empty(QRYSA1->maxloja)
-        cRetorno := soma1(QRYSA1->maxloja)
+        cRetorno := soma1( alltrim( QRYSA1->maxloja ) )
       else
         cRetorno := "IE01"
       endif

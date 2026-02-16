@@ -6,3 +6,70 @@
 .widgetButton {
   cursor: pointer;
 }
+
+.loading-box {
+  width: 340px;
+  padding: 1px 10px;
+
+  border: 2px solid #107048;
+  border-radius: 12px;
+  font-family: Arial, sans-serif;
+  color: #0b3d30;
+}
+
+/* GRID PRINCIPAL */
+.loading-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+}
+
+/* Textos */
+.info {
+  display: grid;
+  row-gap: 4px;
+}
+
+.title {
+  font-size: 14px;
+}
+
+.last-update {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Botão */
+.stop-btn {
+  padding: 6px 14px;
+  background-color: #107048;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.stop-btn:hover {
+  opacity: 0.9;
+}
+
+/* Spinner */
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #b6e5d3;
+  border-top: 3px solid #107048;
+  border-radius: 50%;
+}
+
+.spinner-rotate {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
