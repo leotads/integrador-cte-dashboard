@@ -1,0 +1,140 @@
+#Include "protheus.ch"
+#Include "totvs.ch"
+
+Class ConvertXML
+    public data formato as integer
+
+    Public Method New(nformat) Constructor
+    Public Method Convert(cXml)
+EndClass
+
+Method New(nFormat) Class ConvertXML
+    default nFormat := 0
+
+    self:formato := nFormat
+Return Self
+
+Method Convert(cXml) Class ConvertXML
+    Local oXml       := TXmlManager():New()
+    Local oRootWrap  := JsonObject():New()
+    Local oRootNode  := Nil
+    Local cRootName  := ""
+    Local xRet       := Nil
+
+    If ValType(cXml) <> "C" .Or. Empty(AllTrim(cXml))
+        Return {.F., "XML vazio ou inválido" }
+    EndIf
+
+    xRet := oXml:Parse(cXml)
+    If xRet == .F.
+        Return {.F., _JsonEscape(oXml:Error()) }
+    EndIf
+
+    cRootName := AllTrim(oXml:CNAME)
+
+    If Empty(cRootName)
+        Return {.F., "Não foi possível identificar o nó raiz" }
+    EndIf
+
+    oRootNode := _XmlNodeToJson(oXml)
+
+    oRootWrap[cRootName] := oRootNode
+
+    /* JSON em formato string */
+    If self:formato == 1
+        Return {.T., oRootWrap:ToJson()}
+    EndIf
+
+    /* JSON em formato objeto */
+Return {.T., oRootWrap}
+
+Static Function _XmlNodeToJson(oXml)
+
+    Local oOut      := JsonObject():New()
+    Local cText     := ""
+    Local lHasChild := .F.
+    Local cChild    := ""
+    Local xChildVal := Nil
+
+    /* Texto puro */
+    cText := AllTrim(cValToChar(oXml:CTEXT))
+
+    /* Verifica filhos */
+    lHasChild := oXml:DOMHasChildNode()
+
+    /* Se NÃO tem filhos ? retorna texto direto */
+    If !lHasChild
+        Return cText
+    EndIf
+
+    /* Se tem filhos */
+    If oXml:DOMChildNode()
+        Do While .T.
+            cChild := AllTrim(oXml:CNAME)
+            xChildVal := _XmlNodeToJson(oXml)
+            _AddChild(oOut, cChild, xChildVal)
+
+            If oXml:DOMHasNextNode()
+                oXml:DOMNextNode()
+            Else
+                Exit
+            EndIf
+        EndDo
+        oXml:DOMParentNode()
+    EndIf
+Return oOut
+
+Static Function _AddChild(oJson, cKey, xValue)
+    Local xCurrent := Nil
+    Local aArray   := {}
+
+    If Empty(cKey)
+        Return .T.
+    EndIf
+
+    If _HasKey(oJson, cKey)
+        xCurrent := oJson[cKey]
+
+        If ValType(xCurrent) == "A"
+            aAdd(xCurrent, xValue)
+            oJson[cKey] := xCurrent
+        Else
+            aArray := {}
+            aAdd(aArray, xCurrent)
+            aAdd(aArray, xValue)
+            oJson[cKey] := aArray
+        EndIf
+    Else
+        oJson[cKey] := xValue
+    EndIf
+Return .T.
+
+Static Function _HasKey(oJson, cKey)
+    Local aNames := oJson:GetNames()
+    Local nI
+
+    For nI := 1 To Len(aNames)
+        If aNames[nI] == cKey
+            Return .T.
+        EndIf
+    Next
+
+Return .F.
+
+Static Function _JsonEscape(cText)
+    Local c := cValToChar(cText)
+    c := StrTran(c, "\", "\\")
+    c := StrTran(c, '"', '\"')
+    c := StrTran(c, Chr(13), "")
+    c := StrTran(c, Chr(10), "\n")
+Return c
+
+/* função para teeste e validações */
+User Function XMLJSON2()
+    Local cXml  := ""
+    Local oConv := ConvertXML():New(/* 1 = string, 0 = object */ 0)
+
+    cXml := MemoRead("C:\Users\paulo\Downloads\XML-25260135297943000293570010000012141000068473\25260135297943000293570010000012141000068473.xml")
+    aResult := oConv:Convert(cXml)
+    
+Return
