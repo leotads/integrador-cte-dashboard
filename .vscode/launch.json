@@ -18,8 +18,11 @@
 		},
 		{
 			"label": "u_losf001h"
+		},
+		{
+			"label": "u_losf0008"
 		}
 	],
-	"lastProgramExecuted": "u_losf001i",
+	"lastProgramExecuted": "sigamdi",
 	"lastProgramArguments": []
 }

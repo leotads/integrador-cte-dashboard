@@ -774,6 +774,10 @@ METHOD ACAO() CLASS TNYXPEDIDOS
 				oPedAux:Set('C5_FILIAL'	, SC5->C5_FILIAL	)
 				
 				self:SC5[t]	:= oPedAux
+
+				recLock("ZZ1", .F.)
+					ZZ1->ZZ1_CODPED := SC5->C5_NUM
+				ZZ1->( msUnLock() )
 			
 			endif
 			::RETORNO 	:= 'INCLUIDO COM SUCESSO'

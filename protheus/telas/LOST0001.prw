@@ -670,6 +670,23 @@ Static Function getAllDocs(cContent)
       endif
     endif
 
+    if jContent["filters"]:hasProperty("tipoIntegracao")
+      if len(jContent["filters"]["tipoIntegracao"]) > 0
+
+        for i := 1 to len(jContent["filters"]["tipoIntegracao"])
+          if i == 1
+            cFilters += " AND ZZ1_TIPO in ( '" + upper(alltrim(jContent["filters"]["tipoIntegracao"][i])) +  "' "
+          else
+            cFilters += " , '" + upper(alltrim(jContent["filters"]["tipoIntegracao"][i])) +  "' "
+          endif
+          
+        next i 
+
+        cFilters += " ) "
+
+      endif
+    endif
+
     if jContent["filters"]:hasProperty("status")
       if len(jContent["filters"]["status"]) > 0
 

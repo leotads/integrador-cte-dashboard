@@ -88,10 +88,12 @@ export class MonitorComponent {
       { property: 'chave' },
       { 
         property: 'tipoDocumento', 
+        label: "Tipo Documento",
         type: 'label',
         labels: [
-          { value: "1", label: "CTE" },
-          { value: "2", label: "NFS" },
+          { value: "1", label: "CTE", color: 'color-10' },
+          { value: "2", label: "NFS", color: 'color-03' },
+          { value: "3", label: "Combustivel", color: 'color-07' },
         ]
       },
       { 
@@ -178,6 +180,21 @@ export class MonitorComponent {
       label: 'Número Até',
       optional: true,
       gridColumns: 6
+    },
+    {
+      property: 'tipoIntegracao',
+      label: 'Tipo Integração',
+      optional: true,
+      gridColumns: 12,
+      fieldValue: 'code',
+      fieldLabel: 'description',
+      options: [
+        { code: "T", description: "Todos"},
+        { code: "1", description: "CTE"},
+        { code: "2", description: "NFS"},
+        { code: "3", description: "NF Combustivel"},
+      ],
+      optionsMulti: true
     },
     {
       property: 'tipo',

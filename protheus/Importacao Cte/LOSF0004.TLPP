@@ -151,38 +151,7 @@ User Function LOSF0004(oBjt,oEndre)
     aAdd(aSA1,{'A1_TEL'     , Substr(cCodTel,3,TAMSX3("A1_TEL")[1]),Nil})
     aAdd(aSA1,{'A1_CLIDIR'  , "N",Nil})
     
-    if alltrim(cIE) != "ISENTO"
-
-        if Empty(cIE)
-            cIE := "ISENTO"
-        elseIf alltrim( CUF ) $ "PE,ES,BA,CE,MA,PB,PI,AL,SE,PA,RN"
-            if len( alltrim( cIE ) ) > 9
-                cIE := RIGHT( alltrim(cIE), 9 )
-            else
-                cIE := strzero( val( cIE ), 9 )
-            endif
-        Elseif alltrim( CUF ) $ "MG,DF"
-            if len( alltrim( cIE ) ) > 13
-                cIE := RIGHT( alltrim(cIE), 13 )
-            else
-                cIE := strzero( val( cIE ), 13 )
-            endif
-        Elseif alltrim( CUF ) $ "RO"
-            if len( alltrim( cIE ) ) > 14
-                cIE := RIGHT( alltrim(cIE), 14 )
-            else
-                cIE := strzero( val( cIE ), 14 )
-            endif
-        Elseif alltrim( CUF ) $ "RS"
-            if len( alltrim( cIE ) ) > 10
-                cIE := RIGHT( alltrim(cIE), 10 )
-            else
-                cIE := strzero( val( cIE ), 10 )
-            endif
-
-        EndIf
-
-    endif
+    cIE := u_validaIE(cIE, cUF)
 
     aAdd(aSA1,{'A1_INSCR'   , cIE, nil })
     

@@ -920,7 +920,7 @@ Method findOrCreateOrder(oPedido, aClient) class IntegraNF
 //    aadd(aLinha,{"C6_CLASFIS" , "040"            , Nil})
 //    aadd(aLinha,{"C6_TPOP" , "F"            , Nil})
     aadd(aLinha,{"C6_QTDVEN" , 1            , Nil})
-    aadd(aLinha,{"C6_QTDLIB" , 1            , Nil})
+//    aadd(aLinha,{"C6_QTDLIB" , 1            , Nil})
     aadd(aLinha,{"C6_PRCVEN" , oPedido["valorServico"]         , Nil})
     aadd(aLinha,{"C6_PRUNIT" , oPedido["valorServico"]         , Nil})
 //    aadd(aLinha,{"C6_VALOR"  , oPedido["valorServico"]         , Nil})
