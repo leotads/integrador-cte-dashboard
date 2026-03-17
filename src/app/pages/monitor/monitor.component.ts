@@ -93,7 +93,8 @@ export class MonitorComponent {
         labels: [
           { value: "1", label: "CTE", color: 'color-10' },
           { value: "2", label: "NFS", color: 'color-03' },
-          { value: "3", label: "Combustivel", color: 'color-07' },
+          { value: "3", label: "Combustivel", color: 'color-02' },
+          { value: "4", label: "Carta de Frete", color: 'color-12' },
         ]
       },
       { 
@@ -192,13 +193,14 @@ export class MonitorComponent {
         { code: "T", description: "Todos"},
         { code: "1", description: "CTE"},
         { code: "2", description: "NFS"},
-        { code: "3", description: "NF Combustivel"},
+        { code: "3", description: "NF Combustivel (Em breve)"},
+        { code: "4", description: "Carta de Frete (Em breve)"},
       ],
       optionsMulti: true
     },
     {
-      property: 'tipo',
-      label: 'Tipo',
+      property: 'acao',
+      label: 'Ação',
       optional: true,
       gridColumns: 12,
       fieldValue: 'code',

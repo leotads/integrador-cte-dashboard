@@ -21,8 +21,28 @@
 		},
 		{
 			"label": "u_losf0008"
+		},
+		{
+			"args": [
+				"0",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_losf0009"
+		},
+		{
+			"args": [
+				"118144",
+				"E"
+			],
+			"label": "u_losf001i"
 		}
 	],
-	"lastProgramExecuted": "sigamdi",
-	"lastProgramArguments": []
+	"lastProgramExecuted": "u_losf0008",
+	"lastProgramArguments": [
+		"118144",
+		"E"
+	]
 }

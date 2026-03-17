@@ -13,7 +13,9 @@ import {
   PoChartOptions,
   PoChartSerie,
   PoNotificationService,
-  PoTab
+  PoTab,
+  PoFieldModule,
+  PoSelectOption
 } from '@po-ui/ng-components';
 import { ProAppConfigService, ProJsToAdvplService } from '@totvs/protheus-lib-core';
 import { ProtheusService } from '../../services/protheus.service';
@@ -29,7 +31,8 @@ import { timeout } from 'rxjs';
     PoDatepickerModule,
     PoTabsModule,
     PoChartModule,
-    PoLoadingModule
+    PoLoadingModule,
+    PoFieldModule
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
@@ -45,6 +48,14 @@ export class DashboardComponent {
   numberOfErrors: string = '0';
   endDate: string = <any>new Date();
   startDate: string = <any>format(new Date(), 'yyyy-MM-dd');
+  documentTypes: Array<PoSelectOption> = [
+    { value: "all", label: "Todos" }, 
+    { value: "1", label: "CTE" }, 
+    { value: "2", label: "NFS" }, 
+    { value: "3", label: "Combustivel (Em breve)" }, 
+    { value: "4", label: "Carta de Frete (Em breve)" }
+  ];
+  documentType: string = "all";
 
   optionsChart: PoChartOptions = {
     axis: {
@@ -131,7 +142,7 @@ export class DashboardComponent {
     this.protheusService
       .getProtheus(
         'getQuantityDocuments',
-        JSON.stringify({ date: this.startDate, status: '' })
+        JSON.stringify({ date: this.startDate, status: '', documentType: this.documentType })
       )
       .subscribe({
         next: (result) => {
@@ -144,7 +155,7 @@ export class DashboardComponent {
     this.protheusService
       .getProtheus(
         'getQuantityIntegrated',
-        JSON.stringify({ date: this.startDate, status: 'P' })
+        JSON.stringify({ date: this.startDate, status: 'P', documentType: this.documentType })
       )
       .subscribe({
         next: (result) => {
@@ -157,7 +168,7 @@ export class DashboardComponent {
     this.protheusService
       .getProtheus(
         'getQuantityOpenDocuments',
-        JSON.stringify({ date: this.startDate, status: 'A' })
+        JSON.stringify({ date: this.startDate, status: 'A', documentType: this.documentType })
       )
       .subscribe({
         next: (result) => {
@@ -170,7 +181,7 @@ export class DashboardComponent {
     this.protheusService
       .getProtheus(
         'getQuantityErrors',
-        JSON.stringify({ date: this.startDate, status: 'E' })
+        JSON.stringify({ date: this.startDate, status: 'E', documentType: this.documentType })
       )
       .subscribe({
         next: (result) => {
@@ -183,7 +194,7 @@ export class DashboardComponent {
 
     this.protheusService.getProtheus(
       'chartDocumentsPerDay',
-      JSON.stringify({date: this.startDate})
+      JSON.stringify({date: this.startDate, documentType: this.documentType})
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
@@ -207,7 +218,7 @@ export class DashboardComponent {
 
     this.protheusService.getProtheus(
       'chartDocumentsPerMonth',
-      JSON.stringify({date: mesAno})
+      JSON.stringify({date: mesAno, documentType: this.documentType})
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
@@ -229,7 +240,7 @@ export class DashboardComponent {
 
     this.protheusService.getProtheus(
       'chartDocumentsPerYear',
-      JSON.stringify({date: ano })
+      JSON.stringify({date: ano, documentType: this.documentType })
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
@@ -249,6 +260,7 @@ export class DashboardComponent {
 
     this.protheusService.getProtheus(
       'chartDocumentsPerYears',
+      JSON.stringify({ documentType: this.documentType })
     ).subscribe({
       next: (result) => {
         const data: any = JSON.parse(result);
@@ -267,6 +279,11 @@ export class DashboardComponent {
 
     this.acao("Monitor", { status: [status] });
 
+  }
+
+  changeDocumentsType(event: any) {
+    this.documentType = event;
+    this.changeDate();
   }
 
   changeDate() {
