@@ -38,11 +38,508 @@
 				"E"
 			],
 			"label": "u_losf001i"
+		},
+		{
+			"label": "u_losf0011"
+		},
+		{
+			"label": "u_LOSF0012"
+		},
+		{
+			"label": "u_LOSF0013"
+		},
+		{
+			"args": [
+				"135750",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_losf0014"
+		},
+		{
+			"args": [
+				"140249",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_LOSF014B"
+		},
+		{
+			"args": [
+				"0",
+				"E",
+				"1"
+			],
+			"label": "u_LOSF001i"
+		},
+		{
+			"args": [
+				"108174",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"151581",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"151673",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"153772",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"153778",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"79779",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"79779",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"157215",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"157220",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158426",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158427",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158428",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158428",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158429",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158430",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"153727",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"0",
+				"E",
+				"3"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"153751",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158437",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158438",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158438",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"158439",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"160187",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"0",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"167117",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"168482",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"165203",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"162503",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"80786",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"191991",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"191991",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"58584",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"187072",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"0",
+				"E",
+				"2"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"121219"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"121219",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"96386",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"213109",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221695",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221695",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221999",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221698"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221998"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221696",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221997"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221694"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221996"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221995",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221429"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221609"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221392"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"221609",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"212706"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"212798"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_TESTHYPER"
+		},
+		{
+			"label": "u_validaObrigatorios"
+		},
+		{
+			"label": "u_testeF"
+		},
+		{
+			"args": [
+				"188565",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"153977",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_hypsched"
+		},
+		{
+			"args": [
+				"592188",
+				"A"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "sigaest"
+		},
+		{
+			"args": [
+				"855160"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"855160",
+				"E"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"0",
+				"A",
+				"4"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"args": [
+				"911489"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_ttCreBra"
+		},
+		{
+			"args": [],
+			"label": "u_ttCreBra"
+		},
+		{
+			"label": "u_ttCredBra"
+		},
+		{
+			"args": [
+				"",
+				"A",
+				"4"
+			],
+			"label": "u_losf001i"
+		},
+		{
+			"label": "u_testeBrdBol"
+		},
+		{
+			"args": [
+				"{\"01\"",
+				"01010001\"}"
+			],
+			"label": "u_losf001h"
+		},
+		{
+			"label": "u_LOSF0001"
 		}
 	],
-	"lastProgramExecuted": "u_losf0008",
-	"lastProgramArguments": [
-		"118144",
-		"E"
-	]
+	"lastProgramExecuted": "u_LOSF0001",
+	"lastProgramArguments": []
 }

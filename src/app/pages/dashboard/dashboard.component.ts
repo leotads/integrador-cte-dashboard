@@ -52,8 +52,8 @@ export class DashboardComponent {
     { value: "all", label: "Todos" }, 
     { value: "1", label: "CTE" }, 
     { value: "2", label: "NFS" }, 
-    { value: "3", label: "Combustivel (Em breve)" }, 
-    { value: "4", label: "Carta de Frete (Em breve)" }
+    { value: "3", label: "NF Combustivel" }, 
+    { value: "4", label: "Carta de Frete" }
   ];
   documentType: string = "all";
 

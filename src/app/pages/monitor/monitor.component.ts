@@ -81,6 +81,7 @@ export class MonitorComponent {
         ]
       },
       { property: 'filial' },
+      { property: 'codigo' },
       { property: 'data' },
       { property: 'hora' },
       { property: 'documento' },
@@ -105,6 +106,8 @@ export class MonitorComponent {
           { value: "C", label: "Carta Correção" },
           { value: "E", label: "Exclusão" },
           { value: "S", label: "Substituição" },
+          { value: "B", label: "Baixa Parcela" },
+          { value: "A", label: "Alteração Baixa" },
         ]
       },
     ];
@@ -193,8 +196,8 @@ export class MonitorComponent {
         { code: "T", description: "Todos"},
         { code: "1", description: "CTE"},
         { code: "2", description: "NFS"},
-        { code: "3", description: "NF Combustivel (Em breve)"},
-        { code: "4", description: "Carta de Frete (Em breve)"},
+        { code: "3", description: "NF Combustivel"},
+        { code: "4", description: "Carta de Frete"},
       ],
       optionsMulti: true
     },
@@ -210,6 +213,8 @@ export class MonitorComponent {
         { code: "S", description: "Substituição"},
         { code: "E", description: "Cancelamento"},
         { code: "C", description: "Complemento"},
+        { code: "B", description: "Baixar Parcela"},
+        { code: "A", description: "Alterar Baixa"},
       ],
       optionsMulti: true
     },
